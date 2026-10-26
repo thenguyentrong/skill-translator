@@ -50,6 +50,8 @@ What already runs (the card is still hand-written, the Meta model steps come nex
 
 ## Results so far
 
+**Status, 26 Oct 2026 (day 1):** the three arms pass the kill test with their own camera vision. The G1 humanoid reaches the cube, but its three-finger hand doesn't hold it yet (best try so far 3/10). The Meta model steps (video → skill card, model file → adapter) come next.
+
 The kill test puts the cube and the bowl at random places inside each robot's reach. A trial counts only if the cube ends up inside the bowl.
 
 | Robot | Kill test, 10 fixed layouts | 50 new layouts |

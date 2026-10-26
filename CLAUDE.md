@@ -103,6 +103,18 @@ Numbers to show: success of the translated skill and of the trained policy per r
 
 **Product idea (user, 26 Oct)**: a web tool: upload a 5–10 s phone video of one task → skill card → pick robots from a library or upload your own model (MJCF/URDF) → it translates, runs the sim (cloud GPU, e.g. Modal credits) and shows each robot doing it, so one demo scales to many robots. Fits the judging: Impact 30 % ("could become something people use"), Demo 25 % ("holds up live"). Plan shown, waiting for "go".
 
+**Day 1 end (26 Oct, ~21:00): pushed** `translator`, `readme`, `cleanup`, `status` to main. README has hero.gif/mp4 + vision/robots images (`scripts/make_media.py` re-makes them).
+
+**OPEN (start here tomorrow)**
+1. **User:** add a payment method on dev.meta.ai (every API call fails until then), put the key in `.env` as `MODEL_API_KEY`, film the skill video (spec in "Next" below).
+2. **G1 grasp:** best so far 3/10 (an agent's experiment with new hand poses, not saved as code). Problem: curling middle finger lands on the cube's top edge, thumb pushes the side, cube squeezes out. Redo the Dex3 open/close search with a "no hand vertex inside the cube before side contact" check; maybe a smaller close target past contact (hand motors kp 500, no force limit). Search script idea: scratchpad `dex3.py` (lost with the session; easy to redo).
+3. **Meta API facts** (official quickstart, read 26 Oct): OpenAI-compatible, base URL `https://api.meta.ai/v1`, model `muse-spark-1.3`, input text/image/pdf/**video**, Responses API `POST /v1/responses`, `Authorization: Bearer $MODEL_API_KEY`, `pip install openai`. Still to check: SAM 3.1 endpoint + video/text-prompt format, video size limits, structured JSON output, open-weight Muse Spark Open on Baseten/Modal.
+4. **Modal:** has an official MuJoCo (mjlab) example; check it for headless EGL on GPU before planning the cloud worker.
+5. **Web tool (user's idea):** plan in the product idea above; waiting for "go" after items 3–4.
+6. **Panda drops ~10 % on unseen layouts** (weak menagerie gripper, ~1.5 N); fine for data generation, hurts the 50-trial number.
+7. **UR5e adapter** is hand-written; Wednesday's goal needs Muse to write it from the model file.
+8. Robot model licenses: check before the demo goes out (menagerie: Apache-2.0 / BSD; SO-ARM100: Apache-2.0).
+
 **Next**
 1. User: film the skill video (hand puts a 3 cm cube into a bowl; phone on a stand ~45°, good light, plain table; 3 normal takes + 1 fumble; one photo from straight above) and put the Meta API key into `.env`.
 2. Wednesday: Muse video → skill card (needs the Meta payment method), Muse blueprint → adapter for UR5e (must reproduce: approach/closing axes, grip offset, gripper open/close values, base yaw), fix-from-replay loop.
