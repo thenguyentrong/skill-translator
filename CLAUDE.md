@@ -64,12 +64,48 @@ Numbers to show: success of the translated skill and of the trained policy per r
   - Baseten $100 + 2M TPM, Modal $100, Fireworks $25: reviewed by the partners; if selected, the redemption details come by email. Not guaranteed, so plan without them.
 - Free extra: Fireworks offers free fine-tuning (SFT) of Muse Glimmer 30B until 30 Nov. Possible path to the open-weight bonus prize later; not in scope v1.
 
-**Next (Linux, tonight)**
-1. Check what is already installed (GPU driver, CUDA, MuJoCo, LeRobot, an SO-101 model) and which versions, before installing anything.
-2. Python 3.12 venv + `scripts/smoke_test.py`.
-3. Fetch the robot models (SO-101, Franka, UR5e + Robotiq) into `assets/robots/`, load each, build the scene (table, 3 cm cube, bowl).
-4. User: film the skill video (hand puts a 3 cm cube into a bowl; phone on a stand ~45°, good light, plain table; 3 normal takes + 1 fumble; one photo from straight above) and put the Meta API key into `.env`.
-5. Show the plan for Tuesday's kill test and wait for "go".
+**26 Oct 2026 (night): setup done, "all robots load and move" passed**
+- Machine before setup: RTX 3090, driver 590.48, CUDA 13.1 (driver only, no nvcc, not needed). No MuJoCo/LeRobot/SO-101 model for this project (an old `~/venvs/mujoco` with Python 3.13 exists; not used). System Python 3.12 has no `ensurepip` (fix needs sudo), so `.venv` is a **conda-forge env** (Python 3.12 + ffmpeg 7.1.1).
+- `scripts/smoke_test.py` passes (MuJoCo 3.17.0, mink 1.3.0, EGL render).
+- LeRobot 0.6.1 + torch 2.11.0+cu130 installed, CUDA sees the 3090; LeRobotDataset and ACT import; torchcodec decodes AV1 with the env's ffmpeg; `pip check` clean.
+- `scripts/fetch_robots.sh`: menagerie @ f3b6013, SO-ARM100 @ a758567.
+- `translator/robots.py` = hand-written adapters (SO-101, Panda, UR5e + 2F-85, G1). `translator/scene.py` = table (top 0.75 m), 3 cm cube, bowl (r 6 cm, wall 4 cm), robot; reach measured from the model, cube/bowl placed inside it.
+- `scripts/check_robots.py` → all 4 OK (joint tracking < 0.05 rad, gripper moves). Contact sheet: `outputs/check/robots.png`. Reach at table height: SO-101 0.40 m, Panda 0.79, UR5e 0.80, G1 right arm 0.38.
+- Facts found: SO-101 gripper opens with larger values (open 1.0, closed −0.1), approach axis = `gripperframe` +x. UR5e home faces +y → base yaw −90°. G1 `g1.xml` hand is a visual rubber mesh (no grasp); the G1 bonus needs `g1_with_hands.xml`. G1 stands on the floor, pelvis welded, only the right arm is active.
+- Kinova Gen3 and xArm7 are fetched but **deliberately not in the code** (unseen-robot demo). Gen3 has no gripper; xArm7 has one built in, so xArm7 is the cleaner unseen robot.
+- The UR5e adapter is hand-written for tonight's load test only. Wednesday's goal needs Muse's adapter to replace it (keep the hand-written one only as a reference to compare against).
+
+**Tuesday kill test: PASSED (done early, night of 26 Oct; user said "go")**
+- Code: `cards/cube_to_bowl.json` (hand-written card) → `translator/translate.py` (card + adapter → gripper waypoints; heights from object sizes) → `translator/ik.py` (mink: FrameTask + posture 0.01 + DampingTask 0.1, DofFreezing for non-arm joints, joint limits, 1.5 rad/s speed limit) → `translator/execute.py` (IK every tick at 25 Hz, min-jerk Cartesian paths, 0.3 s settle at pre-grasp and above-bowl, full physics, failure reason) → `scripts/kill_test.py`.
+- **Official result (seeds 0–9, final code): SO-101 9/10, Panda 10/10.** SO-101 seed 3: the jaws pushed the cube 1.5 cm on closing, the tilted carry put it 6 cm off the bowl centre, it hit the rim (logged as "drop").
+- Extra, unseen seeds 1000–1049: **SO-101 50/50, Panda 46/50 (3 drop, 1 grasp), UR5e 48/50** (UR5e with the hand-written adapter, reference only). Results JSON + failure videos in `outputs/kill_test/<robot>/`.
+- Fixes found on the way (all general, none robot-specific):
+  - SO-101 `gripperframe` sits on the fixed jaw's inner face → adapter `grip_offset` (−6 mm along approach, +18 mm toward the moving jaw). Panda/Robotiq pinch sites are already the pad centre.
+  - SO-101 has 5 joints: straight-down works at cube height but not at 10 cm → `orientation_cost` 0.1 (tilts up high, exact at grasp/release; grasp/release IK error ≤ 5.5 mm).
+  - Layout sampler ignored the robot's own body: SO-101 shoulder hit the bowl (all 5 early SO-101 failures). Now cube/bowl stay outside the base footprint, measured from the model (SO-101 0.115 m, Panda 0.219, UR5e 0.085).
+  - Panda drops: near the singularity where joints 1 and 3 line up, the posture term swung them at 1.2 rad/s → hand shook → cube slid out. DampingTask + speed limit cut it; the rest is the menagerie Panda gripper's weak squeeze (~1.5 N on a 3 cm cube). Tested and NOT the cause: gravity compensation, no-slip solver, cube friction 1.5 (each tried on 50 seeds).
+- Open: Panda ~8 % drops (fine for data generation, which keeps only successful episodes; matters for the "translated skill success" number on 50 trials).
+
+**Vision + live view (26 Oct night)**
+- Every robot has 3 cameras: `front` (45°, like the phone on a stand), `top` (straight down) and `robot/wrist` (10 cm behind the grip point, 5 cm to the side, looking at the fingers). Placed from the adapter (grip site + approach/closing axes) and the measured reach, so an unseen robot gets them too. Cameras do not change physics (kill test still SO-101 9/10, Panda 10/10).
+- `translator/render.py` (`Cameras`): labelled front/top/wrist images. Used by kill-test videos (main view + camera column, 960×540), `check_robots.py` (`outputs/check/cameras.png`) and the live viewer.
+- `scripts/watch.py`: real-time MuJoCo viewer with the 3 camera views inside the window; cycles SO-101 → Panda → UR5e. Close the window to stop.
+- Not yet: the robot still gets cube/bowl positions from the simulator. Next vision step = find them from the front/top camera (colour + depth now, SAM 3.1 once the Meta API works). G1 with Dex3 hands is planned and waiting for "go".
+
+**Vision from the robot's own cameras (26 Oct night)**
+- `translator/perceive.py` (`Eyes`): front + top camera, colour mask (red cube, green bowl) + metric depth → 3D points → cube centre (top face), cube yaw (smallest bounding box), bowl centre (circle fit on the rim). Colour step = stand-in for SAM 3.1 text prompts. Accuracy on 150 layouts: cube ~2.5 mm, yaw ~1–2° (max 8°), bowl ~2 mm; top camera is usually blocked by the arm at home, the front camera always sees.
+- Kill test now uses camera vision by default (`--eyes sim` = old perfect knowledge). Official seeds 0–9: **SO-101 10/10, Panda 10/10**. Unseen 1000–1049: SO-101 48/50, Panda 44/50, UR5e 48/50.
+- Also changed: gripper closes over 0.4 s (Robotiq no longer shoves the cube), grip direction chosen by IK reachability (the translator tries all 4 face pairs), arm origin = first arm joint axis (SO-101 pan axis is 3.9 cm in front of its base frame), robot parts split into turning footprint + fixed obstacles, home pose clipped to joint limits, `ready` pose in the adapter.
+
+**G1 humanoid (in progress)**
+- `g1_with_hands.xml` (Dex3, 7 hand motors, BSD-3), pelvis welded, right arm + hand active, ready pose with the hand above the table. Hand open/close poses found by a kinematic search (thumb meets index+middle 156 mm along the hand, 60 mm off the palm).
+- Arm reaches the grasp within 1–2 mm, but 0/5 grasps hold: the curling middle finger lands on the cube's top edge while the thumb pushes the side → cube squeezed out. Shifting the grip point alone: best 1/4. Next: redesign the close motion so the fingertips come down beside the cube (no part of the hand inside the cube volume before side contact).
+
+**Product idea (user, 26 Oct)**: a web tool: upload a 5–10 s phone video of one task → skill card → pick robots from a library or upload your own model (MJCF/URDF) → it translates, runs the sim (cloud GPU, e.g. Modal credits) and shows each robot doing it, so one demo scales to many robots. Fits the judging: Impact 30 % ("could become something people use"), Demo 25 % ("holds up live"). Plan shown, waiting for "go".
+
+**Next**
+1. User: film the skill video (hand puts a 3 cm cube into a bowl; phone on a stand ~45°, good light, plain table; 3 normal takes + 1 fumble; one photo from straight above) and put the Meta API key into `.env`.
+2. Wednesday: Muse video → skill card (needs the Meta payment method), Muse blueprint → adapter for UR5e (must reproduce: approach/closing axes, grip offset, gripper open/close values, base yaw), fix-from-replay loop.
 
 ## Hackathon facts
 
@@ -104,10 +140,12 @@ Numbers to show: success of the translated skill and of the trained policy per r
 
 ## Setup (Linux)
 
-- Python 3.12 venv; `pip install mujoco mink daqp numpy imageio imageio-ffmpeg pillow`; LeRobot (`lerobot[dataset,training]`, needs Python ≥ 3.12 and ffmpeg).
+- `conda create -p .venv -c conda-forge --override-channels python=3.12 ffmpeg=7.1.1`, then `.venv/bin/pip install mujoco mink daqp numpy imageio imageio-ffmpeg pillow "lerobot[dataset,training]"`.
 - Headless rendering: `MUJOCO_GL=egl`.
-- `python scripts/smoke_test.py` checks MuJoCo, mink and rendering.
-- Robot models go to `assets/robots/` (gitignored; fetch with a script: sparse clone of mujoco_menagerie + SO-ARM100).
+- `.venv/bin/python scripts/smoke_test.py` checks MuJoCo, mink and rendering.
+- Robot models go to `assets/robots/` (gitignored): `scripts/fetch_robots.sh` (sparse clone of mujoco_menagerie + SO-ARM100).
+- `.venv/bin/python scripts/check_robots.py [robot ...]` loads each robot into the scene, moves it, writes `outputs/check/robots.png`.
+- `.venv/bin/python scripts/kill_test.py so101 panda --n 10 --seed 0 [--videos none|fail|first+fail|all]` runs the skill card on random layouts; results + videos in `outputs/kill_test/<robot>/`.
 - Meta Model API key in `.env` (gitignored), never in code or chat.
 
 ## Links

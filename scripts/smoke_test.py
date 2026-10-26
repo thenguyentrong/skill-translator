@@ -1,4 +1,6 @@
 """Checks that MuJoCo, mink and offscreen rendering work on this machine."""
+from importlib.metadata import version
+
 import mujoco
 import mink
 import numpy as np
@@ -23,6 +25,7 @@ for _ in range(500):
 r = mujoco.Renderer(m, 240, 320)
 r.update_scene(d)
 img = r.render()
-print("mujoco", mujoco.__version__, "| mink", mink.__version__)
+r.close()
+print("mujoco", mujoco.__version__, "| mink", version("mink"))
 print("box rests at z =", round(float(d.qpos[2]), 4), "(expect ~0.02)")
 print("render", img.shape, "mean", int(np.mean(img)))

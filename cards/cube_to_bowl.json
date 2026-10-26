@@ -1,0 +1,20 @@
+{
+  "name": "cube_to_bowl",
+  "goal": "the cube ends up inside the bowl",
+  "objects": {
+    "cube": {"shape": "box", "size": [0.03, 0.03, 0.03]},
+    "bowl": {"shape": "bowl", "inner_radius": 0.06, "wall_height": 0.04}
+  },
+  "grip": {"object": "cube", "approach": "top", "between": "opposite faces", "width": 0.03},
+  "steps": [
+    {"do": "reach", "to": "above", "object": "cube"},
+    {"do": "descend", "object": "cube"},
+    {"do": "close"},
+    {"do": "lift", "height": 0.10},
+    {"do": "carry", "to": "above", "object": "bowl"},
+    {"do": "lower", "into": "bowl"},
+    {"do": "open"},
+    {"do": "retreat", "height": 0.08}
+  ],
+  "success": {"test": "inside", "object": "cube", "container": "bowl"}
+}
