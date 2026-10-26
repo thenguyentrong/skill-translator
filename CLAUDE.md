@@ -90,30 +90,38 @@ Numbers to show: success of the translated skill and of the trained policy per r
 - Every robot has 3 cameras: `front` (45°, like the phone on a stand), `top` (straight down) and `robot/wrist` (10 cm behind the grip point, 5 cm to the side, looking at the fingers). Placed from the adapter (grip site + approach/closing axes) and the measured reach, so an unseen robot gets them too. Cameras do not change physics (kill test still SO-101 9/10, Panda 10/10).
 - `translator/render.py` (`Cameras`): labelled front/top/wrist images. Used by kill-test videos (main view + camera column, 960×540), `check_robots.py` (`outputs/check/cameras.png`) and the live viewer.
 - `scripts/watch.py`: real-time MuJoCo viewer with the 3 camera views inside the window; cycles SO-101 → Panda → UR5e. Close the window to stop.
-- Not yet: the robot still gets cube/bowl positions from the simulator. Next vision step = find them from the front/top camera (colour + depth now, SAM 3.1 once the Meta API works). G1 with Dex3 hands is planned and waiting for "go".
 
 **Vision from the robot's own cameras (26 Oct night)**
 - `translator/perceive.py` (`Eyes`): front + top camera, colour mask (red cube, green bowl) + metric depth → 3D points → cube centre (top face), cube yaw (smallest bounding box), bowl centre (circle fit on the rim). Colour step = stand-in for SAM 3.1 text prompts. Accuracy on 150 layouts: cube ~2.5 mm, yaw ~1–2° (max 8°), bowl ~2 mm; top camera is usually blocked by the arm at home, the front camera always sees.
 - Kill test now uses camera vision by default (`--eyes sim` = old perfect knowledge). Official seeds 0–9: **SO-101 10/10, Panda 10/10**. Unseen 1000–1049: SO-101 48/50, Panda 44/50, UR5e 48/50.
 - Also changed: gripper closes over 0.4 s (Robotiq no longer shoves the cube), grip direction chosen by IK reachability (the translator tries all 4 face pairs), arm origin = first arm joint axis (SO-101 pan axis is 3.9 cm in front of its base frame), robot parts split into turning footprint + fixed obstacles, home pose clipped to joint limits, `ready` pose in the adapter.
 
-**G1 humanoid (in progress)**
-- `g1_with_hands.xml` (Dex3, 7 hand motors, BSD-3), pelvis welded, right arm + hand active, ready pose with the hand above the table. Hand open/close poses found by a kinematic search (thumb meets index+middle 156 mm along the hand, 60 mm off the palm).
-- Arm reaches the grasp within 1–2 mm, but 0/5 grasps hold: the curling middle finger lands on the cube's top edge while the thumb pushes the side → cube squeezed out. Shifting the grip point alone: best 1/4. Next: redesign the close motion so the fingertips come down beside the cube (no part of the hand inside the cube volume before side contact).
+**G1 humanoid: WORKS (27 Oct ~01:00)** - kill test **9/10** (seeds 0-9, camera vision), unseen 1000-1049 **47/50** (2 ik = target across its body, 1 grasp).
+- `g1_with_hands.xml` (Dex3), pelvis welded, right arm + hand active, `ready` pose with the hand above the table. Hand = 7-motor "gripper" with open/closed poses (adapter tuples).
+- Why the old grasp failed: Dex3's two fingers are ~39 mm apart (a 30 mm cube fits between them) and palm-down the short thumb lies flat. Fix = thumb-index pinch with the hand turned 34° (grip site quat in the adapter) so the thumb-index line runs through the cube; poses from `scripts/grasp_design/search.py` (geometric: opposite faces, same moment, flat pads, no table/cube touch before) + physics check in `scripts/grasp_design/rig.py`.
+- Lesson: a mocap-teleported hand cannot lift anything in MuJoCo (friction is velocity-based); the rig drives the hand on an x-y-z gantry with motors. All earlier rig results were invalid because of this.
+- IK now keeps forearm+hand (from the 4th arm joint) 1 cm away from the robot's other parts (mink CollisionAvoidanceLimit); arms' numbers unchanged (SO-101 10/10 48/50, Panda 10/10 44/50, UR5e 48/50).
+
+**Pitch idea (user, 26 Oct night, saved for the pitch/video)**
+- Two stages: (1) **learning** = video → skill (Muse analyses, tests, builds the skill file); (2) **repeating / imitation** = skill → every other robot.
+- Teacher metaphor (his mother is a teacher): you teach the whole class the same material once, but every student *understands* it differently; that is the hard, expensive part (video → skill). But people are very good at *repeating* a physical task once it is shown and checked (work stations). So: learn and test the skill once, then each robot only repeats it on its own body.
+- Cost story: price of making a skill once vs price of each repeat on a new robot vs what is saved because nobody re-learns the skill per robot. Put real numbers on it (GPU minutes, API cost, demo hours).
+- Honest contrast with RL: you must hand-write goal, reward and task; if lucky you get a good policy, if unlucky you burn compute for nothing. Real-world video + a checked skill gives a direct, cheaper path. Avoid buzzwords ("agentic physical AI").
 
 **Product idea (user, 26 Oct)**: a web tool: upload a 5–10 s phone video of one task → skill card → pick robots from a library or upload your own model (MJCF/URDF) → it translates, runs the sim (cloud GPU, e.g. Modal credits) and shows each robot doing it, so one demo scales to many robots. Fits the judging: Impact 30 % ("could become something people use"), Demo 25 % ("holds up live"). Plan shown, waiting for "go".
 
-**Day 1 end (26 Oct, ~21:00): pushed** `translator`, `readme`, `cleanup`, `status` to main. README has hero.gif/mp4 + vision/robots images (`scripts/make_media.py` re-makes them).
+**Day 1 end (26 Oct, ~21:00): pushed** `translator`, `readme`, `cleanup`, `status` to main. **27 Oct ~01:30: pushed** `g1` (G1 grasp, self-collision IK, 4-robot README video). README has hero.gif/mp4 + vision/robots images (`scripts/make_media.py` re-makes them).
 
 **OPEN (start here tomorrow)**
 1. **User:** add a payment method on dev.meta.ai (every API call fails until then), put the key in `.env` as `MODEL_API_KEY`, film the skill video (spec in "Next" below).
-2. **G1 grasp:** best so far 3/10 (an agent's experiment with new hand poses, not saved as code). Problem: curling middle finger lands on the cube's top edge, thumb pushes the side, cube squeezes out. Redo the Dex3 open/close search with a "no hand vertex inside the cube before side contact" check; maybe a smaller close target past contact (hand motors kp 500, no force limit). Search script idea: scratchpad `dex3.py` (lost with the session; easy to redo).
+2. ~~G1 grasp~~ done (9/10). Possible later: let G1 use its waist or left arm for targets across its body.
 3. **Meta API facts** (official quickstart, read 26 Oct): OpenAI-compatible, base URL `https://api.meta.ai/v1`, model `muse-spark-1.3`, input text/image/pdf/**video**, Responses API `POST /v1/responses`, `Authorization: Bearer $MODEL_API_KEY`, `pip install openai`. Still to check: SAM 3.1 endpoint + video/text-prompt format, video size limits, structured JSON output, open-weight Muse Spark Open on Baseten/Modal.
 4. **Modal:** has an official MuJoCo (mjlab) example; check it for headless EGL on GPU before planning the cloud worker.
 5. **Web tool (user's idea):** plan in the product idea above; waiting for "go" after items 3–4.
 6. **Panda drops ~10 % on unseen layouts** (weak menagerie gripper, ~1.5 N); fine for data generation, hurts the 50-trial number.
 7. **UR5e adapter** is hand-written; Wednesday's goal needs Muse to write it from the model file.
 8. Robot model licenses: check before the demo goes out (menagerie: Apache-2.0 / BSD; SO-ARM100: Apache-2.0).
+9. **Wrist camera is virtual** (no body; 10 cm behind the grip point, 5 cm to the side). On SO-101/G1 it floats next to the hand, on Panda it is partly inside the hand. For realism: SO-101 has an official camera mount model (`so101_new_calib_camera.xml`, 32x32 UVC module); give Panda/UR5e a typical wrist-cam mount position.
 
 **Next**
 1. User: film the skill video (hand puts a 3 cm cube into a bowl; phone on a stand ~45°, good light, plain table; 3 normal takes + 1 fumble; one photo from straight above) and put the Meta API key into `.env`.

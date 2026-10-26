@@ -46,17 +46,26 @@ def check(name, renderer_cache):
     drift = float(np.max(np.abs(d.qvel[: m.nv - 6]))) if m.nv > 6 else 0.0
 
     home_ctrl = d.ctrl.copy()
-    errs = []
-    for a in s.arm_actuators:
-        lo, hi = m.actuator_ctrlrange[a]
-        target = float(np.clip(home_ctrl[a] + 0.3, lo, hi))
-        if abs(target - home_ctrl[a]) < 1e-6:
-            target = float(np.clip(home_ctrl[a] - 0.3, lo, hi))
-        d.ctrl[a] = target
-    run(s, 1.5)
+    start = mujoco.MjData(m)
+    mujoco.mj_copyData(start, m, d)
+    errs = None
+    for step in (0.3, -0.3):
+        mujoco.mj_copyData(d, m, start)
+        for a in s.arm_actuators:
+            lo, hi = m.actuator_ctrlrange[a]
+            target = float(np.clip(home_ctrl[a] + step, lo, hi))
+            if abs(target - home_ctrl[a]) < 1e-6:
+                target = float(np.clip(home_ctrl[a] - step, lo, hi))
+            d.ctrl[a] = target
+        run(s, 1.5)
+        trial = [abs(joint_q(s, a) - d.ctrl[a]) for a in s.arm_actuators]
+        if errs is None or max(trial) < max(errs):
+            errs, moved = trial, d.qpos.copy()
+        if max(errs) < 0.06:
+            break
+    d.qpos[:] = moved
+    mujoco.mj_forward(m, d)
     snap()
-    for a in s.arm_actuators:
-        errs.append(abs(joint_q(s, a) - d.ctrl[a]))
     d.ctrl[:] = home_ctrl
     run(s, 1.5)
 

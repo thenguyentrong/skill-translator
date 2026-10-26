@@ -29,7 +29,7 @@ class Robot:
     grip_offset: tuple[float, float, float] = (0.0, 0.0, 0.0)
     max_joint_speed: float = 1.5
     tool: tuple[str, Path] | None = None
-    ee_add: tuple[str, tuple[float, float, float]] | None = None
+    ee_add: tuple | None = None
 
 
 ROBOTS = {
@@ -73,12 +73,12 @@ ROBOTS = {
             name="g1",
             xml=MENAGERIE / "unitree_g1" / "g1_with_hands.xml",
             ee_site="right_grip",
-            ee_add=("right_wrist_yaw_link", (0.1556, 0.0602, 0.0)),
+            ee_add=("right_wrist_yaw_link", (0.1216, 0.0587, 0.0128), (0.9557, 0.0, -0.2943, 0.0)),
             approach_axis="+y",
             closing_axis="+x",
             gripper=tuple(f"right_hand_{j}_joint" for j in DEX3_JOINTS),
-            gripper_open=(0.0, -0.15, -1.49, 0.4, 0.0, 0.4, 0.0),
-            gripper_closed=(0.0, -0.76, -0.73, 0.25, 1.7, 0.25, 1.7),
+            gripper_open=(0.794, -0.318, -1.518, 0.216, 1.356, 0.216, 1.356),
+            gripper_closed=(0.242, -0.5, -1.122, 0.692, 1.535, 0.692, 1.535),
             home="stand",
             ready={"right_shoulder_pitch_joint": 0.85, "right_shoulder_roll_joint": -0.046, "right_shoulder_yaw_joint": 0.59,
                    "right_elbow_joint": -0.871, "right_wrist_roll_joint": -1.897, "right_wrist_pitch_joint": 0.206,

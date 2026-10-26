@@ -5,6 +5,29 @@ import numpy as np
 from .scene import PREFIX, Scene
 
 
+def _subtree(m, root):
+    def inside(b):
+        while b > 0:
+            if b == root:
+                return True
+            b = m.body_parentid[b]
+        return False
+    return {b for b in range(m.nbody) if inside(b)}
+
+
+def _self_collision_pair(scene: Scene):
+    """Forearm and hand (from the 4th arm joint on) against the robot parts the arm does not move."""
+    m = scene.model
+    if len(scene.arm_joints) < 4:
+        return None
+    arm = _subtree(m, m.jnt_bodyid[scene.arm_joints[0]])
+    distal = _subtree(m, m.jnt_bodyid[scene.arm_joints[3]])
+    robot = [g for g in range(m.ngeom) if m.geom_contype[g] and m.body(m.geom_bodyid[g]).name.startswith(PREFIX)]
+    near = [g for g in robot if m.geom_bodyid[g] in distal]
+    rest = [g for g in robot if m.geom_bodyid[g] not in arm]
+    return (near, rest) if near and rest else None
+
+
 class IK:
     def __init__(self, scene: Scene, posture_cost=1e-2, damping_cost=0.1):
         m = scene.model
@@ -19,6 +42,10 @@ class IK:
         self.constraints = [mink.DofFreezingTask(m, dof_indices=[i for i in range(m.nv) if i not in arm_dofs])]
         speed = {m.joint(j).name: scene.robot.max_joint_speed for j in scene.arm_joints}
         self.limits = [mink.ConfigurationLimit(m), mink.VelocityLimit(m, speed)]
+        pair = _self_collision_pair(scene)
+        if pair:
+            self.limits.append(mink.CollisionAvoidanceLimit(m, [pair], minimum_distance_from_collisions=0.01,
+                                                            collision_detection_distance=0.05))
         self.arm_qadr = [int(m.jnt_qposadr[j]) for j in scene.arm_joints]
         self.site_id = scene.ee_site_id
 

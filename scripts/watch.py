@@ -86,7 +86,7 @@ def watch_robot(name, card, seeds, speed):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("robots", nargs="*", default=["so101", "panda", "ur5e"])
+    p.add_argument("robots", nargs="*", default=["so101", "panda", "ur5e", "g1"])
     p.add_argument("--trials", type=int, default=3, help="trials per robot before switching")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--speed", type=float, default=1.0, help="1.0 = real time")

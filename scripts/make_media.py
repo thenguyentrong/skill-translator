@@ -1,4 +1,4 @@
-"""Renders the README media: hero.gif / hero.mp4 (one skill card, three robots), robots.png, vision.png."""
+"""Renders the README media: hero.gif / hero.mp4 (one skill card, four robots), robots.png, vision.png."""
 import math
 import os
 import sys
@@ -44,7 +44,7 @@ def close_camera(scene, distance=1.6, azimuth=145, elevation=-22, lift=0.1):
     return cam
 
 
-def hero(robots=("so101", "panda", "ur5e"), seed=0, every=2):
+def hero(robots=("so101", "panda", "ur5e", "g1"), seed=2, every=2):
     panels = []
     for name in robots:
         scene = build(name)
@@ -70,7 +70,8 @@ def hero(robots=("so101", "panda", "ur5e"), seed=0, every=2):
         panels.append(frames)
     n = max(len(p) for p in panels) + FPS // every
     panels = [p + [p[-1]] * (n - len(p)) for p in panels]
-    frames = [np.concatenate([p[i] for p in panels], axis=1) for i in range(n)]
+    frames = [np.concatenate([np.concatenate([p[i] for p in panels[:2]], axis=1),
+                              np.concatenate([p[i] for p in panels[2:]], axis=1)], axis=0) for i in range(n)]
     imageio.mimsave(OUT / "hero.mp4", frames, fps=FPS / every, codec="libx264", quality=8, macro_block_size=8,
                     ffmpeg_params=["-movflags", "+faststart"])
     small = [np.asarray(Image.fromarray(f).resize((f.shape[1] * 2 // 3, f.shape[0] * 2 // 3), Image.LANCZOS)) for f in frames]

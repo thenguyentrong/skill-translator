@@ -79,8 +79,8 @@ def _robot_spec(robot: Robot):
     for key in list(spec.keys):
         spec.delete(key)
     if robot.ee_add:
-        body, pos = robot.ee_add
-        spec.body(body).add_site(name=robot.ee_site, pos=pos, group=3)
+        body, pos, *quat = robot.ee_add
+        spec.body(body).add_site(name=robot.ee_site, pos=pos, quat=quat[0] if quat else [1, 0, 0, 0], group=3)
     if robot.tool:
         site, xml = robot.tool
         tool = mujoco.MjSpec.from_file(str(xml))
