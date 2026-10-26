@@ -6,3 +6,4 @@ assets/robots/
 data/
 outputs/
 runs/
+.claude/
