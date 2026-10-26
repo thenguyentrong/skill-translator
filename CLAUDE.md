@@ -57,7 +57,9 @@ Numbers to show: success of the translated skill and of the trained policy per r
 **26 Oct 2026 (evening)**
 - Idea chosen: Translator. Repo created (this file = the brief). No code yet.
 - Accounts created by the user: Meta Model API (dev.meta.ai), Modal, Fireworks.
-- Credit requests **submitted** by the user: Meta, Baseten, Fireworks. Modal: form filled, check that it was sent:
+- Credit requests **submitted** by the user: Meta, Baseten, Fireworks, Modal.
+- **Open:** dev.meta.ai still has **no payment method** (checked 26 Oct ~18:15). Until the user adds a card, every Meta Model API call fails. Tuesday's kill test needs no API (hand-written skill card); Wednesday's video → skill card step does.
+- Credit details:
   - Meta Model API $150: arrives within ~2 business days → check dev.meta.ai → Billing. The API only works with a payment method on file; set a spend alert at $150.
   - Baseten $100 + 2M TPM, Modal $100, Fireworks $25: reviewed by the partners; if selected, the redemption details come by email. Not guaranteed, so plan without them.
 - Free extra: Fireworks offers free fine-tuning (SFT) of Muse Glimmer 30B until 30 Nov. Possible path to the open-weight bonus prize later; not in scope v1.
