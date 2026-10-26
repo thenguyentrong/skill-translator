@@ -54,8 +54,20 @@ Numbers to show: success of the translated skill and of the trained policy per r
 
 ## Status (update this section)
 
-- 26 Oct: idea chosen. Meta Model API account created; payment method and credit claim still pending (user). Partner credits (Baseten, Modal, Fireworks) requested or pending. Repo created. No code yet.
-- Linux side: MuJoCo, LeRobot and an SO-101 model may already be installed there. Check what exists and which versions before installing anything.
+**26 Oct 2026 (evening)**
+- Idea chosen: Translator. Repo created (this file = the brief). No code yet.
+- Accounts created by the user: Meta Model API (dev.meta.ai), Modal, Fireworks.
+- Credit requests all **submitted** by the user:
+  - Meta Model API $150: arrives within ~2 business days → check dev.meta.ai → Billing. The API only works with a payment method on file; set a spend alert at $150.
+  - Baseten $100 + 2M TPM, Modal $100, Fireworks $25: reviewed by the partners; if selected, the redemption details come by email. Not guaranteed, so plan without them.
+- Free extra: Fireworks offers free fine-tuning (SFT) of Muse Glimmer 30B until 30 Nov. Possible path to the open-weight bonus prize later; not in scope v1.
+
+**Next (Linux, tonight)**
+1. Check what is already installed (GPU driver, CUDA, MuJoCo, LeRobot, an SO-101 model) and which versions, before installing anything.
+2. Python 3.12 venv + `scripts/smoke_test.py`.
+3. Fetch the robot models (SO-101, Franka, UR5e + Robotiq) into `assets/robots/`, load each, build the scene (table, 3 cm cube, bowl).
+4. User: film the skill video (hand puts a 3 cm cube into a bowl; phone on a stand ~45°, good light, plain table; 3 normal takes + 1 fumble; one photo from straight above) and put the Meta API key into `.env`.
+5. Show the plan for Tuesday's kill test and wait for "go".
 
 ## Hackathon facts
 
