@@ -125,6 +125,8 @@ def build(name: str):
     spec.visual.headlight.diffuse = [0.5, 0.5, 0.5]
     spec.visual.headlight.ambient = [0.3, 0.3, 0.3]
 
+    spec.add_texture(name="sky", type=mujoco.mjtTexture.mjTEXTURE_SKYBOX, builtin=mujoco.mjtBuiltin.mjBUILTIN_GRADIENT,
+                     rgb1=[0.82, 0.85, 0.89], rgb2=[0.45, 0.5, 0.58], width=512, height=3072)
     world = spec.worldbody
     world.add_light(pos=[0.3, -0.5, 2.5], dir=[0, 0.2, -1], type=mujoco.mjtLightType.mjLIGHT_DIRECTIONAL, castshadow=True)
     world.add_geom(name="floor", type=mujoco.mjtGeom.mjGEOM_PLANE, size=[3, 3, 0.05], rgba=[0.35, 0.37, 0.4, 1])
