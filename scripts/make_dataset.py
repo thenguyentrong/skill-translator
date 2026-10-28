@@ -2,6 +2,8 @@
 
 Each try: random layout (seed) -> camera eyes -> run_skill in full physics. Only runs that pass the card's success
 test are saved. Frame t = the state before control tick t (+ its camera images) and the command sent during tick t.
+--push R: the arm gets a slow random push of up to about R rad per joint while the planned (clean) command is recorded,
+so the data also shows how to get back on course (recovery data, like DART).
 """
 import argparse
 import json
@@ -72,10 +74,18 @@ class Gripper:
 
 
 class Recorder:
-    def __init__(self, scene, card, eyes):
+    def __init__(self, scene, card, eyes, push=0.0, seed=0):
         self.scene, self.card, self.eyes = scene, card, eyes
         m = scene.model
         self.arm_acts = [a for a in scene.arm_actuators if m.actuator_trntype[a] == int(mujoco.mjtTrn.mjTRN_JOINT)]
+        if push:
+            n, rng, state = len(self.arm_acts), np.random.default_rng(seed), {"x": None}
+
+            def drift(label):  # smooth noise (Ornstein-Uhlenbeck, ~0.5 s memory), up to `push` rad; calm while gripping
+                x = state["x"] if state["x"] is not None else np.zeros(n)
+                state["x"] = x + (-x * 2.0 + rng.normal(0, push * 2.0, n)) / FPS
+                return np.clip(state["x"], -push, push) * (0.0 if label in ("close", "lift") else 1.0)
+            scene.push = drift
         self.arm_qadr = [int(m.jnt_qposadr[m.actuator_trnid[a, 0]]) for a in self.arm_acts]
         self.names = [m.joint(int(m.actuator_trnid[a, 0])).name.removeprefix(PREFIX) for a in self.arm_acts] + ["gripper"]
         self.gripper = Gripper(scene)
@@ -102,7 +112,8 @@ class Recorder:
         actions = []
 
         def on_tick(_label):
-            actions.append(np.append(d.ctrl[self.arm_acts], self.gripper.command(d.ctrl)).astype(np.float32))
+            arm = scene.command if getattr(scene, "push", None) else d.ctrl[self.arm_acts]
+            actions.append(np.append(arm, self.gripper.command(d.ctrl)).astype(np.float32))
 
         try:
             res = run_skill(scene, self.card, seen, on_tick=on_tick)
@@ -144,7 +155,7 @@ def generate(args, out):
     av.logging.set_libav_level(av.logging.ERROR)
     card = load_card(args.card)
     scene = build(args.robot, card)
-    rec = Recorder(scene, card, Eyes(scene) if args.eyes == "camera" else None)
+    rec = Recorder(scene, card, Eyes(scene) if args.eyes == "camera" else None, push=args.push, seed=args.seed)
     print(f"{args.robot}: state/action = {rec.names}  (gripper 0 open .. 1 closed)")
     print(f"gripper travel open/closed: {np.round(rec.gripper.len_open, 4)} / {np.round(rec.gripper.len_shut, 4)}")
     ds = LeRobotDataset.create(repo_id=f"local/{out.name}", fps=FPS, features=rec.features(), root=out,
@@ -252,6 +263,7 @@ def main():
     p.add_argument("--seed", type=int, default=0, help="first layout seed; each try uses the next one")
     p.add_argument("--out", default=None, help="dataset folder (default outputs/datasets/<robot>_<card name>)")
     p.add_argument("--eyes", choices=["camera", "sim"], default="camera")
+    p.add_argument("--push", type=float, default=0.0, help="recovery data: random push of up to this many rad per arm joint")
     p.add_argument("--image-threads", type=int, default=4)
     p.add_argument("--overwrite", action="store_true", help="delete an existing dataset at --out first")
     p.add_argument("--verify-only", action="store_true")

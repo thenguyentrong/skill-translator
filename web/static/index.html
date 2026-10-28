@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Translator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,600..800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <b class="brand">Translator</b>
+    <nav aria-label="Views">
+      <button class="tab on" data-view="skill" aria-pressed="true">New skill</button>
+      <button class="tab" data-view="robots" aria-pressed="false">Robots</button>
+    </nav>
+    <span id="gpu" class="gpu small" hidden></span>
+  </div>
+</header>
+
+<main>
+  <p id="error" class="error" role="alert" hidden></p>
+
+  <div id="view-skill">
+    <section class="intro">
+      <div>
+        <h1>Show a task once.<br>Pick the robots that learn it.</h1>
+        <p class="lead">Meta AI turns a short video into a skill card. Each robot checks if its body can do it, then tries it in simulation.</p>
+      </div>
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept="video/*">
+        <span class="drop-title">Drop a short video here</span>
+        <span class="muted small">or click to choose one. 3 to 15 seconds, one task, hands in view.</span>
+      </label>
+    </section>
+
+    <section class="step" id="s-video">
+      <h2>Your video</h2>
+      <p class="muted">Or start from one of these clips.</p>
+      <div id="library" class="library" aria-label="Video library"><div class="skeleton tile"></div><div class="skeleton tile"></div><div class="skeleton tile"></div></div>
+      <div class="row" id="make-row" hidden>
+        <span id="chosen" class="chosen"></span>
+        <button id="make" class="primary">Make the card</button>
+        <button id="again" class="ghost" hidden>Make a new card</button>
+        <span id="make-note" class="muted small"></span>
+      </div>
+    </section>
+
+    <section class="step" id="s-card" hidden>
+      <h2>What Meta AI understood</h2>
+      <ol id="stages" class="stages"></ol>
+      <div class="split">
+        <figure class="media">
+          <video id="overlay" controls muted loop playsinline preload="metadata"></video>
+          <figcaption class="muted small">SAM 3.1 follows the objects and the hand in every frame.</figcaption>
+        </figure>
+        <div id="card" class="card" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="step" id="s-check" hidden>
+      <h2>Which robots can do it</h2>
+      <p class="muted">Each robot compares the card with its own body. Pick the ones that should try.</p>
+      <div id="check" class="robots"></div>
+      <div class="row bar">
+        <button id="pick-all" class="ghost">Pick all that can</button>
+        <label class="inline">Tries per robot <input type="number" id="trials" value="5" min="1" max="20"></label>
+        <button id="run" class="primary" disabled>Let them try</button>
+      </div>
+    </section>
+
+    <section class="step" id="s-runs" hidden>
+      <h2>Watch them try</h2>
+      <p class="muted">Each robot practises its grip first, then does the task with its own cameras. The clip is its first try.</p>
+      <div id="runs" class="runs"></div>
+    </section>
+  </div>
+
+  <div id="view-robots" hidden>
+    <section class="step">
+      <h2>Robot library</h2>
+      <p class="muted">One file per robot. Muse Spark wrote some of them from the robot's model file alone.</p>
+      <div id="robot-list" class="robots"><div class="skeleton card-sk"></div><div class="skeleton card-sk"></div><div class="skeleton card-sk"></div></div>
+    </section>
+  </div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

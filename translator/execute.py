@@ -84,7 +84,8 @@ def run(scene: Scene, ticks, settle=1.0, on_tick=None):
     history, cube_at = [d.qpos.copy()], {}
     grip = 0.0
     for q, closed, label in ticks:
-        d.ctrl[acts] = q
+        scene.command = q  # what the plan asks for; with `scene.push` set, the arm gets a little off course
+        d.ctrl[acts] = q + scene.push(label) if getattr(scene, "push", None) else q
         grip = float(np.clip(grip + (1 if closed else -1) / (GRIP_TIME * FPS), 0.0, 1.0))
         scene.set_grip(grip)
         for _ in range(steps):

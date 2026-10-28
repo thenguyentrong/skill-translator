@@ -152,6 +152,8 @@ Each robot's checked runs become a LeRobot dataset (200 episodes: joint states, 
 | Panda | cube_to_bowl | 200 episodes (200 of 216) | 40k steps, about 40 min | **19/50 (38 %)** |
 | G1 (humanoid) | cube_to_bowl | 200 episodes (200 of 236) | 40k steps, about 40 min | **37/50 (74 %)** |
 | xArm7 (adapter by Muse) | lemon_to_bowl (the skill from the video) | 200 episodes (200 of 202) | 40k steps, about 42 min | **33/50 (66 %)** |
+| FR3 (adapter by Muse) | lemon_to_bowl (the skill from the video) | 200 episodes (200 of 205) | 40k steps, about 44 min | **26/50 (52 %)** |
+| TienKung 3 (adapter by Muse) | lemon_to_bowl (the skill from the video) | 200 episodes (200 of 229) | 40k steps, about 40 min | **29/50 (58 %)** |
 
 ## Swap robots and skills
 
@@ -169,11 +171,14 @@ Add a new robot from its model file:
 .venv/bin/python scripts/write_adapter.py <model.xml under assets/robots> --name myrobot [--model baseten|fireworks]
 ```
 
+Or in the browser (runs on your own PC for now): `scripts/web.sh`, then open http://127.0.0.1:8000. Upload a video, see what Meta AI understood, see which robots can do it, pick some and watch them try.
+
 Teach a new skill from a video:
 
 ```bash
-.venv/bin/python scripts/run_job.py my_video.mp4           # card, every robot tries it, reel.mp4 in outputs/jobs/<video>/
-.venv/bin/python scripts/run_job.py my_video.mp4 --train   # then dataset, training and a 50-try test per robot
+.venv/bin/python scripts/run_job.py my_video.mp4 --check   # card + which robots can do it, in seconds
+.venv/bin/python scripts/run_job.py my_video.mp4 --robots-only --robots ur5e g1 --train   # only the robots you pick
+.venv/bin/python scripts/run_job.py my_video.mp4           # every robot tries it, reel.mp4 in outputs/jobs/<video>/
 .venv/bin/python scripts/review_job.py outputs/jobs/<video> # Muse checks the tries and improves the card
 ```
 
@@ -207,6 +212,7 @@ MUJOCO_GL=egl .venv/bin/python scripts/smoke_test.py      # MuJoCo, mink, render
 | `translator/translate.py`, `ik.py`, `execute.py` | card + adapter → waypoints → IK at every step → physics run, success test |
 | `translator/carry.py`, `mobile.py` | carry kind: crate and basket, sliding base between tables |
 | `translator/review.py` | Muse checks robot tries against the video and changes the card |
+| `web/` | local web app: JSON API + one page |
 | `scripts/` | jobs, matrix, adapters, datasets, training eval, live viewer, media |
 
 ## Next
@@ -214,6 +220,7 @@ MUJOCO_GL=egl .venv/bin/python scripts/smoke_test.py      # MuJoCo, mink, render
 - Film our own videos (more skills), and a real hand-held phone video
 - Check and improve: more card fields (for example a pinch at the edge), more rounds
 - Two hands without handles (squeeze a box between the palms), a humanoid that steps back while it opens a full-size door
+- Better policies: recovery data (push the teacher off course and record the correction), longer training, fine-tune SmolVLA
 - Training for the door and carry skills
 - Run everything in the cloud, then a web tool: upload a short video, pick robots, watch each one do the task
 
