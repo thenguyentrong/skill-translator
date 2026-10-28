@@ -143,6 +143,7 @@ Numbers to show: success of the translated skill and of the trained policy per r
 3. **Check-and-improve loop:** rerun on cookie with FIELD_HELP + tried-changes history; consider a grip-height / edge-pinch card field.
 4. **Next kinds:** two hands without handles (palm squeeze), humanoid stepping back to open a full-size door, door/carry datasets.
 5. **Hand-in:** 3-min video (user's voice + music), licence check of every robot model, final README, submit by Wed 4 Nov (user submits).
+6. **Known bugs:** SO-101 `gripper_gap` reports 341 mm wide open (one-jaw gripper, a ray misses) -> "too big" texts show a wrong number; the web app's check did not start after a fresh card (fixed 28 Oct, worker chains learn -> check).
 
 
 - **One command card → trained policies:** `scripts/train_job.py <card.json | run_job folder> [--robots ...] [--episodes 200 --steps 40000 --trials 50]`: datasets in parallel (CPU), ACT one at a time (GPU), each 50-trial test runs while the next robot trains; skips finished steps; writes `outputs/train_jobs/<card>/report.{json,md}` + logs. Smoke test (xarm7, 12 eps, 200 steps, 3 trials) ran the whole chain. Real run started 28 Oct 03:45: lemon_to_bowl on xarm7, fr3, tienkung3 (the Muse-written adapters). TODO: `run_job --train` calling it (wait until the door work stops editing run_job/scene).

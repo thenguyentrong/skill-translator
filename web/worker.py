@@ -98,6 +98,9 @@ def main():
         else:
             result = try_robots(target, args.robots, args.trials)
         status(out, args.step, state="done", finished=time.time(), **result)
+        if args.step == "learn":  # a new card goes straight on to the robots' check
+            status(out, "check", state="running", started=time.time(), error=None)
+            status(out, "check", state="done", finished=time.time(), **check(out.name))
     except Exception as e:
         traceback.print_exc()
         status(out, args.step, state="failed", finished=time.time(), error=f"{type(e).__name__}: {e}"[:300])
