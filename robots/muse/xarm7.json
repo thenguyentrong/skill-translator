@@ -1,0 +1,26 @@
+{
+ "name": "xarm7",
+ "xml": "mujoco_menagerie/ufactory_xarm7/xarm7.xml",
+ "ee_site": "link_tcp",
+ "gripper": "gripper",
+ "gripper_open": 0.0,
+ "gripper_closed": 255.0,
+ "base_pos": [
+  0,
+  0,
+  0
+ ],
+ "base_yaw": 0.0,
+ "fixed_base": true,
+ "approach_axis": "+z",
+ "closing_axis": "+y",
+ "grip_offset": [
+  0,
+  0,
+  0
+ ],
+ "fixed_jaw": false,
+ "notes": "Used existing site link_tcp on xarm_gripper_base_link at 0 0 0.172. Finger bodies separated along y (left at y=+0.035, right at y=-0.035) and extend along +z (knuckle z~0.059 to pads z~0.13-0.15), so approach palm->fingertips is +z in base-link/site frame and closing is y-axis. Chose +y for closing (symmetric). Site has no quat so frame = body frame. Gripper actuator 'gripper' drives tendon 'split' (left+right driver) ctrlrange 0-255; home keyframe has gripper ctrl 0 and driver qpos 0, assumed open, so open=0 closed=255. Unsure of open/closed polarity and whether link_tcp (z=0.172, slightly beyond pads at ~0.15) is exactly between pads vs fingertip; may need ee_add offset if grasp is high/low and may need swapped open/closed.",
+ "home": "home",
+ "payload_kg": 3.5
+}

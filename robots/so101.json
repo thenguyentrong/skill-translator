@@ -1,0 +1,15 @@
+{
+  "name": "so101",
+  "xml": "SO-ARM100/Simulation/SO101/so101_new_calib.xml",
+  "ee_site": "gripperframe",
+  "gripper": "gripper",
+  "gripper_open": 0.5,
+  "gripper_closed": -0.1,
+  "home": {"shoulder_lift": -0.9, "elbow_flex": 0.65, "wrist_flex": 1.2},
+  "approach_axis": "+x",
+  "closing_axis": "+z",
+  "orientation_cost": 0.1,
+  "grip_offset": [-0.006, 0.0, 0.0],
+  "fixed_jaw": true,
+  "notes": "5 joints, so it may tilt the gripper high above the table. gripperframe sits on the fixed jaw's inner face."
+}

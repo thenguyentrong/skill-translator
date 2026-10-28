@@ -1,0 +1,13 @@
+{
+  "name": "panda",
+  "xml": "mujoco_menagerie/franka_emika_panda/panda.xml",
+  "ee_site": "pinch",
+  "ee_add": ["hand", [0.0, 0.0, 0.1034]],
+  "gripper": "actuator8",
+  "gripper_open": 255.0,
+  "gripper_closed": 0.0,
+  "grip_force_gain": 10.0,
+  "home": "home",
+  "notes": "The menagerie hand squeezes ~1.5 N (real Franka Hand: 70 N), so its gripper gain is raised 10x.",
+  "payload_kg": 3.0
+}

@@ -1,0 +1,42 @@
+{
+  "name": "g1",
+  "xml": "mujoco_menagerie/unitree_g1/g1_with_hands.xml",
+  "ee_site": "right_grip",
+  "ee_add": ["right_wrist_yaw_link", [0.1216, 0.0587, 0.0128], [0.9557, 0.0, -0.2943, 0.0]],
+  "approach_axis": "+y",
+  "closing_axis": "+x",
+  "gripper": ["right_hand_thumb_0_joint", "right_hand_thumb_1_joint", "right_hand_thumb_2_joint", "right_hand_index_0_joint", "right_hand_index_1_joint", "right_hand_middle_0_joint", "right_hand_middle_1_joint"],
+  "gripper_open": [0.794, -0.318, -1.518, 0.216, 1.356, 0.216, 1.356],
+  "gripper_closed": [0.242, -0.5, -1.122, 0.692, 1.535, 0.692, 1.535],
+  "home": "stand",
+  "ready": {
+    "right_shoulder_pitch_joint": 0.85,
+    "right_shoulder_roll_joint": -0.046,
+    "right_shoulder_yaw_joint": 0.59,
+    "right_elbow_joint": -0.871,
+    "right_wrist_roll_joint": -1.897,
+    "right_wrist_pitch_joint": 0.206,
+    "right_wrist_yaw_joint": 0.093
+  },
+  "base_pos": [-0.28, 0.0, -0.75],
+  "fixed_base": true,
+  "active": ["right_shoulder", "right_elbow", "right_wrist"],
+  "payload_kg": 2.0,
+  "hands": 2,
+  "mobile": true,
+  "handle_open": [0.794, -0.318, -1.518, 0.216, 1.356, 0.0, 0.0],
+  "handle_release": [0.794, -0.318, 0.0, 0.216, 1.356, 0.0, 0.0],
+  "left": {
+    "ee_site": "left_grip",
+    "ee_add": ["left_wrist_yaw_link", [0.1216, -0.0587, 0.0128], [0.9557, 0.0, -0.2943, 0.0]],
+    "approach_axis": "-y",
+    "closing_axis": "+x",
+    "active": ["left_shoulder", "left_elbow", "left_wrist"],
+    "gripper": ["left_hand_thumb_0_joint", "left_hand_thumb_1_joint", "left_hand_thumb_2_joint", "left_hand_index_0_joint", "left_hand_index_1_joint", "left_hand_middle_0_joint", "left_hand_middle_1_joint"],
+    "gripper_open": [0.794, 0.318, 1.518, -0.216, -1.356, -0.216, -1.356],
+    "gripper_closed": [0.242, 0.5, 1.122, -0.692, -1.535, -0.692, -1.535],
+    "handle_open": [0.794, 0.318, 1.518, -0.216, -1.356, 0.0, 0.0],
+    "handle_release": [0.794, 0.318, 0.0, -0.216, -1.356, 0.0, 0.0]
+  },
+  "notes": "Humanoid standing at the table, pelvis held, right arm + Dex3 hand. Thumb-index pinch, hand turned 34 degrees. Carry: both hands (left = mirror of the right), handle_open keeps the middle finger straight (it landed on the bar), handle_release straightens the thumb (its tip stayed hooked under the bar). mobile: the base slides, the legs do not step."
+}

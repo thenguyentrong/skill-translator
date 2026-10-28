@@ -1,0 +1,64 @@
+{
+ "name": "oli",
+ "xml": "limx_humanoid/HU_D04_description/xml/HU_D04_01_gripper.xml",
+ "ee_site": "right_pinch_tip",
+ "gripper": "right_gripper",
+ "gripper_open": 0.0,
+ "gripper_closed": 0.7,
+ "base_pos": [
+  -0.3,
+  0.0,
+  -0.8426
+ ],
+ "base_yaw": 0.0,
+ "fixed_base": true,
+ "approach_axis": "+x",
+ "closing_axis": "+y",
+ "grip_offset": [
+  0,
+  0,
+  0
+ ],
+ "fixed_jaw": false,
+ "orientation_cost": 1.0,
+ "notes": "Right arm, new tip site 18mm forward of right_pinch to place grip point between pads (fingers stuck out 18.4mm). Approach +x palm-to-tip, closing +y travel 38mm Y vs 6.4 X. Prior run 7/10 ok (3/5 cube, 4/5 block) with IK ~1mm but disqualified for hip_yaw_links touching table at base -0.25. Moved base back to -0.30 to keep hips/feet behind table back edge x=-0.20 while preserving reach (was 0.502m). Kept waist in active and orientation 1.0. Unsure exact pad z, used -0.016. Uses LimX's own parallel gripper (scripts/limx_gripper.py builds HU_D04_01_gripper.xml from their gripper URDF); the earlier Robotiq version is in outputs/adapters/oli/oli_robotiq.json. gripper_closed set to 0.7, where LimX's fingertips meet (Muse used the joint limit 1.0, past the contact point).",
+ "ee_add": [
+  "right_gripper_link_0",
+  [
+   0.104,
+   0.0,
+   -0.016
+  ],
+  [
+   1,
+   0,
+   0,
+   0
+  ]
+ ],
+ "active": [
+  "shoulder_pitch_right",
+  "shoulder_roll_right",
+  "shoulder_yaw_right",
+  "elbow_right",
+  "wrist_yaw_right",
+  "wrist_pitch_right",
+  "wrist_roll_right",
+  "body_waist_yaw",
+  "body_waist_A",
+  "body_waist_B"
+ ],
+ "home": {
+  "right_shoulder_pitch_joint": -0.35,
+  "right_shoulder_roll_joint": -0.15,
+  "right_shoulder_yaw_joint": 0.0,
+  "right_elbow_joint": -0.8,
+  "right_wrist_yaw_joint": 0.0,
+  "right_wrist_pitch_joint": -0.5,
+  "right_wrist_roll_joint": 0.0,
+  "waist_A_joint": 0.05,
+  "waist_B_joint": 0.05,
+  "waist_yaw_joint": 0.0
+ },
+ "mobile": true
+}

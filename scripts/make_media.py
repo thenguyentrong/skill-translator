@@ -105,8 +105,8 @@ def vision_still(name="so101", seed=0):
     eyes.rgb.update_scene(d, camera="front")
     im = Image.fromarray(eyes.rgb.render().copy())
     draw = ImageDraw.Draw(im)
-    for i, (obj, colour) in enumerate((("cube", (255, 230, 0)), ("bowl", (255, 255, 255)))):
-        pts = eyes.points(obj)
+    for i, (role, obj, colour) in enumerate((("held", "cube", (255, 230, 0)), ("container", "bowl", (255, 255, 255)))):
+        pts = eyes.points(role)
         for u, v in project(m, d, "front", pts[::3], W, H):
             draw.point((u, v), fill=colour)
         cx, cy = project(m, d, "front", seen[obj]["pos"][None], W, H)[0]

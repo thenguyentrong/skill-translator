@@ -17,30 +17,12 @@ import numpy as np
 
 from translator.execute import CONTACT_STEPS, FPS, run_skill
 from translator.perceive import Eyes
+from translator.practice import ensure
 from translator.render import Cameras
-from translator.scene import BOWL_RADIUS, CUBE_HALF, build
+from translator.scene import build, sample_layout
 from translator.translate import load_card
 
 OUT = ROOT / "outputs" / "kill_test"
-
-
-def sample_layout(scene, rng, min_gap=0.12):
-    """Cube and bowl at 35-75 % of the reach, at most 45 degrees to each side of the robot's front,
-    outside the robot's own base footprint, and on the table."""
-    def point(clearance):
-        while True:
-            r = rng.uniform(max(0.35 * scene.reach, scene.footprint + clearance), 0.75 * scene.reach)
-            a = rng.uniform(-math.pi / 4, math.pi / 4)
-            xy = scene.origin[:2] + r * np.array([math.cos(a), math.sin(a)])
-            if scene.on_table(xy, clearance) and scene.clear_of_robot(xy, clearance):
-                return xy
-
-    cube = point(CUBE_HALF * math.sqrt(2) + 0.02)
-    while True:
-        bowl = point(BOWL_RADIUS + 0.006 + 0.02)
-        if np.linalg.norm(bowl - cube) >= max(min_gap, BOWL_RADIUS + 0.04):
-            break
-    return cube, bowl, rng.uniform(0, math.pi / 2)
 
 
 def save_video(scene, history, path, size=(720, 540)):
@@ -70,12 +52,16 @@ def main():
     p.add_argument("--videos", choices=["none", "fail", "first+fail", "all"], default="first+fail")
     p.add_argument("--eyes", choices=["camera", "sim"], default="camera",
                    help="camera: the robot finds the objects in its own images; sim: it is told the true poses")
+    p.add_argument("--no-practice", action="store_true", help="skip the grip practice (grip depth 0 unless saved)")
     args = p.parse_args()
     card = load_card(args.card)
 
     summary = {}
     for name in args.robots:
-        scene = build(name)
+        if not args.no_practice:
+            pr = ensure(name, card)
+            print(f"{name}: practice grip depth {pr['grip_depth'] * 1000:+.0f} mm ({pr['success']}/{pr['n']}), tries {pr['tries']}", flush=True)
+        scene = build(name, card)
         eyes = Eyes(scene) if args.eyes == "camera" else None
         out = OUT / name
         out.mkdir(parents=True, exist_ok=True)
@@ -92,6 +78,10 @@ def main():
                 print(f"{name:6s} seed {seed:3d}: FAIL unseen", flush=True)
                 continue
             res = run_skill(scene, card, seen)
+            if res.reason == "too_big":
+                rows.append({"seed": seed, "success": False, "reason": "too_big", "why": res.cube_at["why"]})
+                print(f"{name:6s} seed {seed:3d}: FAIL too_big ({res.cube_at['why']})", flush=True)
+                continue
             row = {
                 "seed": seed, "success": res.success, "reason": res.reason,
                 "eyes_err_mm": {k: round(float(np.linalg.norm(seen[k]["pos"][:2] - true[k]["pos"][:2])) * 1000, 1) for k in seen},

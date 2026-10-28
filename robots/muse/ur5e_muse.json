@@ -1,0 +1,41 @@
+{
+ "name": "ur5e_muse",
+ "xml": "mujoco_menagerie/universal_robots_ur5e/ur5e.xml",
+ "ee_site": "tool/pinch",
+ "gripper": "tool/fingers_actuator",
+ "gripper_open": 0.0,
+ "gripper_closed": 255.0,
+ "base_pos": [
+  0,
+  0,
+  0
+ ],
+ "base_yaw": 0.0,
+ "fixed_base": true,
+ "approach_axis": "+z",
+ "closing_axis": "+y",
+ "grip_offset": [
+  0,
+  0,
+  0
+ ],
+ "fixed_jaw": false,
+ "notes": "UR5e arm has 6 arm actuators and no gripper, only attachment_site on wrist_3_link, so attach Robotiq 2F-85 tool at that site with pos 0 0 0 quat 1 0 0 0. ee_site tool/pinch and gripper tool/fingers_actuator per tool list with prefix tool/. Open 0=85mm, closed 255 per tool doc, both inside ctrlrange. Approach +z because tool fingers point along its own +z (palm to tip). Closing guessed +y (parallel jaw closure perpendicular to +z); unsure between +x/+y without seeing 2f85.xml pinch orientation - to be confirmed by test. Home keyframe 'home' used as start, assumed hand above table. base 0,0,0 on table, yaw 0 to face +x objects, fixed_base true to weld arm, active null for arm.",
+ "tool": [
+  "attachment_site",
+  "mujoco_menagerie/robotiq_2f85/2f85.xml",
+  [
+   0,
+   0,
+   0
+  ],
+  [
+   1,
+   0,
+   0,
+   0
+  ]
+ ],
+ "home": "home",
+ "payload_kg": 5.0
+}

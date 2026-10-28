@@ -1,0 +1,67 @@
+{
+ "name": "potato_to_basket",
+ "goal": "A potato is inside the basket alongside the other potatoes.",
+ "objects": {
+  "potato": {
+   "shape": "sphere",
+   "size": [
+    0.05,
+    0.05,
+    0.05
+   ],
+   "color": "yellow"
+  },
+  "basket": {
+   "shape": "basket",
+   "inner_radius": 0.205,
+   "wall_height": 0.15,
+   "color": "black"
+  }
+ },
+ "grip": {
+  "object": "potato",
+  "approach": "top",
+  "between": "around",
+  "width": 0.05
+ },
+ "steps": [
+  {
+   "do": "reach",
+   "to": "above",
+   "object": "potato"
+  },
+  {
+   "do": "descend",
+   "object": "potato"
+  },
+  {
+   "do": "close"
+  },
+  {
+   "do": "lift",
+   "height": 0.25
+  },
+  {
+   "do": "carry",
+   "to": "above",
+   "object": "basket"
+  },
+  {
+   "do": "lower",
+   "into": "basket"
+  },
+  {
+   "do": "open"
+  },
+  {
+   "do": "retreat",
+   "height": 0.25
+  }
+ ],
+ "success": {
+  "test": "inside",
+  "object": "potato",
+  "container": "basket"
+ },
+ "source": "Written by Muse Spark 1.3 from data/videos/potato_into_basket.mp4 (\"A Person Putting Potato in a Basket\", Tima Miroshnichenko, Pexels 7876937) + SAM 3.1 tracks"
+}

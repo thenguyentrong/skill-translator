@@ -1,0 +1,13 @@
+{
+  "name": "ur5e",
+  "xml": "mujoco_menagerie/universal_robots_ur5e/ur5e.xml",
+  "ee_site": "tool/pinch",
+  "tool": ["attachment_site", "mujoco_menagerie/robotiq_2f85/2f85.xml"],
+  "gripper": "tool/fingers_actuator",
+  "gripper_open": 0.0,
+  "gripper_closed": 255.0,
+  "home": "home",
+  "base_yaw": -1.5707963267948966,
+  "notes": "Robotiq 2F-85 on the flange. Home faces +y, so the base turns -90 degrees.",
+  "payload_kg": 5.0
+}

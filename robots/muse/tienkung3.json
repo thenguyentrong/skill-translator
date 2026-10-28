@@ -1,0 +1,82 @@
+{
+ "name": "tienkung3",
+ "xml": "tienkung_xsim/resources/tiangong3/urdf/tiangong3.xml",
+ "ee_site": "tool/pinch",
+ "gripper": "tool/fingers_actuator",
+ "gripper_open": 0.0,
+ "gripper_closed": 255.0,
+ "base_pos": [
+  -0.35,
+  0.0,
+  -0.775
+ ],
+ "base_yaw": 0.0,
+ "fixed_base": true,
+ "approach_axis": "+z",
+ "closing_axis": "+y",
+ "grip_offset": [
+  0,
+  0,
+  0
+ ],
+ "fixed_jaw": false,
+ "notes": "Humanoid with no gripper: left_tcp/right_tcp are rigid meshes, no hand joints/sites/actuators. Must attach Robotiq 2F-85 to right wrist_roll_r_link (end of right arm chain). Tool +z is finger direction, wrist outward is -z in wrist body frame, so attach quat 180deg about X [0,1,0,0] maps tool +z to wrist -z, pos 0 0 -0.06 just beyond wrist origin/tcp. ee_site tool/pinch, gripper tool/fingers_actuator open 0 closed 255 per tool doc. approach +z (palm to fingertips along tool +z), closing +y guessed for 2F-85 parallel closure (unsure, could be x). active is right-arm pos_ actuators only. fixed_base true, humanoid behind table x=-0.35, pelvis 0+1 +0.75+bz, foot offset ~-0.975 gives bz=-0.775 for feet at z=0. home raises right arm forward (shoulder_pitch -1 about +y moves -z arm toward +x) with elbow -0.6 bend, legs/waist zero for standing, hand should be ~1.3m high above table. Unsure about exact standing height, disabled pos groups (0,1,3) vs motor torque group, and 2F85 closing axis sign.",
+ "tool": [
+  "wrist_roll_r_link",
+  "mujoco_menagerie/robotiq_2f85/2f85.xml",
+  [
+   0.0,
+   0.0,
+   -0.06
+  ],
+  [
+   0.0,
+   1.0,
+   0.0,
+   0.0
+  ]
+ ],
+ "active": [
+  "pos_shoulder_pitch_r_joint",
+  "pos_shoulder_roll_r_joint",
+  "pos_shoulder_yaw_r_joint",
+  "pos_elbow_pitch_r_joint",
+  "pos_elbow_yaw_r_joint",
+  "pos_wrist_pitch_r_joint",
+  "pos_wrist_roll_r_joint"
+ ],
+ "home": {
+  "hip_pitch_l_joint": 0.0,
+  "hip_roll_l_joint": 0.0,
+  "hip_yaw_l_joint": 0.0,
+  "knee_pitch_l_joint": 0.0,
+  "ankle_pitch_l_joint": 0.0,
+  "ankle_roll_l_joint": 0.0,
+  "hip_pitch_r_joint": 0.0,
+  "hip_roll_r_joint": 0.0,
+  "hip_yaw_r_joint": 0.0,
+  "knee_pitch_r_joint": 0.0,
+  "ankle_pitch_r_joint": 0.0,
+  "ankle_roll_r_joint": 0.0,
+  "waist_yaw_joint": 0.0,
+  "waist_roll_joint": 0.0,
+  "waist_pitch_joint": 0.0,
+  "head_yaw_joint": 0.0,
+  "head_pitch_joint": 0.0,
+  "shoulder_pitch_l_joint": 0.0,
+  "shoulder_roll_l_joint": 0.0,
+  "shoulder_yaw_l_joint": 0.0,
+  "elbow_pitch_l_joint": 0.0,
+  "elbow_yaw_l_joint": 0.0,
+  "wrist_pitch_l_joint": 0.0,
+  "wrist_roll_l_joint": 0.0,
+  "shoulder_pitch_r_joint": -1.0,
+  "shoulder_roll_r_joint": 0.0,
+  "shoulder_yaw_r_joint": 0.0,
+  "elbow_pitch_r_joint": -0.6,
+  "elbow_yaw_r_joint": 0.0,
+  "wrist_pitch_r_joint": 0.0,
+  "wrist_roll_r_joint": 0.0
+ },
+ "mobile": true
+}

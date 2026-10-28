@@ -1,0 +1,65 @@
+{
+ "name": "block_to_plate",
+ "goal": "the long block lies on the plate",
+ "source": "hand-written",
+ "objects": {
+  "block": {
+   "shape": "box",
+   "size": [
+    0.06,
+    0.025,
+    0.03
+   ]
+  },
+  "plate": {
+   "shape": "plate",
+   "inner_radius": 0.07,
+   "wall_height": 0.012
+  }
+ },
+ "grip": {
+  "object": "block",
+  "approach": "top",
+  "between": "opposite faces",
+  "width": 0.025
+ },
+ "steps": [
+  {
+   "do": "reach",
+   "to": "above",
+   "object": "block"
+  },
+  {
+   "do": "descend",
+   "object": "block"
+  },
+  {
+   "do": "close"
+  },
+  {
+   "do": "lift",
+   "height": 0.06
+  },
+  {
+   "do": "carry",
+   "to": "above",
+   "object": "plate"
+  },
+  {
+   "do": "lower",
+   "into": "plate"
+  },
+  {
+   "do": "open"
+  },
+  {
+   "do": "retreat",
+   "height": 0.08
+  }
+ ],
+ "success": {
+  "test": "on_top",
+  "object": "block",
+  "container": "plate"
+ }
+}

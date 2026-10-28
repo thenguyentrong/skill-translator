@@ -1,0 +1,43 @@
+{
+ "name": "open_cabinet",
+ "kind": "open",
+ "goal": "the cabinet door is open at least 60 degrees",
+ "objects": {
+  "cabinet": {
+   "shape": "cabinet",
+   "size": [0.20, 0.16, 0.30],
+   "door": {"width": 0.20, "height": 0.28, "thickness": 0.012, "hinge": "left"},
+   "color": "green"
+  },
+  "handle": {
+   "shape": "bar",
+   "on": "cabinet",
+   "diameter": 0.014,
+   "length": 0.08,
+   "standoff": 0.035,
+   "from_free_edge": 0.035,
+   "height": 0.17,
+   "color": "red"
+  }
+ },
+ "grip": {
+  "object": "handle",
+  "approach": "front",
+  "between": "around",
+  "width": 0.014
+ },
+ "steps": [
+  {"do": "reach", "to": "in front of", "object": "handle"},
+  {"do": "approach", "object": "handle"},
+  {"do": "close"},
+  {"do": "pull", "object": "cabinet"},
+  {"do": "open"},
+  {"do": "retreat", "distance": 0.08}
+ ],
+ "success": {
+  "test": "open_angle",
+  "object": "cabinet",
+  "min_angle_deg": 60
+ },
+ "source": "hand-written"
+}

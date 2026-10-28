@@ -1,0 +1,65 @@
+{
+ "name": "can_to_bin",
+ "goal": "the can stands inside the bin",
+ "source": "hand-written",
+ "objects": {
+  "can": {
+   "shape": "cylinder",
+   "size": [
+    0.045,
+    0.045,
+    0.07
+   ]
+  },
+  "bin": {
+   "shape": "box",
+   "inner_radius": 0.08,
+   "wall_height": 0.06
+  }
+ },
+ "grip": {
+  "object": "can",
+  "approach": "top",
+  "between": "around",
+  "width": 0.045
+ },
+ "steps": [
+  {
+   "do": "reach",
+   "to": "above",
+   "object": "can"
+  },
+  {
+   "do": "descend",
+   "object": "can"
+  },
+  {
+   "do": "close"
+  },
+  {
+   "do": "lift",
+   "height": 0.1
+  },
+  {
+   "do": "carry",
+   "to": "above",
+   "object": "bin"
+  },
+  {
+   "do": "lower",
+   "into": "bin"
+  },
+  {
+   "do": "open"
+  },
+  {
+   "do": "retreat",
+   "height": 0.08
+  }
+ ],
+ "success": {
+  "test": "inside",
+  "object": "can",
+  "container": "bin"
+ }
+}

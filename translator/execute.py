@@ -51,20 +51,28 @@ def plan(scene: Scene, waypoints):
             closed = wp.closed
             ticks += [(q, closed, wp.label)] * round(wp.dwell * FPS)
             continue
+        if wp.joint_move:
+            q_to, pe, re = ik.reach(wp.pos, wp.rot)
+            n = math.ceil(max(0.5, np.abs(q_to - q).max() / (0.5 * scene.robot.max_joint_speed)) * FPS)
+            ticks += [(q + _min_jerk(i / n) * (q_to - q), closed, wp.label) for i in range(1, n + 1)]
+            ticks += [(q_to, closed, wp.label)] * round(wp.dwell * FPS)
+            q, pos, rot = q_to, wp.pos, wp.rot
+            pos_err[wp.label], rot_err[wp.label] = max(pe, pos_err.get(wp.label, 0.0)), max(re, rot_err.get(wp.label, 0.0))
+            continue
         duration = max(0.5, np.linalg.norm(wp.pos - pos) / (speed * wp.speed), _rot_angle(rot, wp.rot) / (1.5 * wp.speed))
         n = math.ceil(duration * FPS)
         for i in range(1, n + 1):
             s = _min_jerk(i / n)
-            q, pe, re = ik.solve(pos + s * (wp.pos - pos), _slerp(rot, wp.rot, s), 1 / FPS)
+            q, pe, re = ik.solve(pos + s * (wp.pos - pos), _slerp(rot, wp.rot, s), 1 / FPS, free_turn=wp.free_turn)
             ticks.append((q, closed, wp.label))
         for _ in range(FPS):
-            q_new, pe, re = ik.solve(wp.pos, wp.rot, 1 / FPS)
+            q_new, pe, re = ik.solve(wp.pos, wp.rot, 1 / FPS, free_turn=wp.free_turn)
             if np.abs(q_new - q).max() < 1e-3:
                 break
             q = q_new
             ticks.append((q, closed, wp.label))
         ticks += [(q, closed, wp.label)] * round(wp.dwell * FPS)
-        pos_err[wp.label], rot_err[wp.label] = pe, re
+        pos_err[wp.label], rot_err[wp.label] = max(pe, pos_err.get(wp.label, 0.0)), max(re, rot_err.get(wp.label, 0.0))
         pos, rot = wp.pos, wp.rot
     return ticks, pos_err, rot_err
 
@@ -101,19 +109,59 @@ def reach_miss(scene: Scene, waypoints, steps=("descend", "lift", "carry", "lowe
     for wp in waypoints:
         if wp.pos is None:
             continue
+        if wp.joint_move:
+            _, pe, _ = ik.reach(wp.pos, wp.rot)
         for _ in range(4):
-            _, pe, _ = ik.solve(wp.pos, wp.rot, 0.25)
+            _, pe, _ = ik.solve(wp.pos, wp.rot, 0.25, free_turn=wp.free_turn)
         if wp.label in steps:
             miss = max(miss, pe)
     return miss
 
 
+def _run_open(scene: Scene, card, seen, on_tick=None):
+    """Open card. Fail labels: not_reached (IK misses the handle or the arc by > 1 cm), missed_handle (the door
+    hardly moved: the fingers closed beside the bar), slipped_off_handle (the door moved, then the hand lost the
+    bar), door_not_open (still holding, but the door stopped short)."""
+    waypoints = translate(card, scene, seen, check=lambda wps: reach_miss(scene, wps, ("approach", "pull")))
+    ticks, pos_err, rot_err = plan(scene, waypoints)
+    history, _ = run(scene, ticks, on_tick=on_tick)
+    m, d = scene.model, mujoco.MjData(scene.model)
+    d.qpos[:] = history[max(i for i, t in enumerate(ticks) if t[2] == "pull") + 1]
+    mujoco.mj_kinematics(m, d)
+    hand = d.site_xpos[scene.ee_site_id] + d.site_xmat[scene.ee_site_id].reshape(3, 3) @ np.array(scene.robot.grip_offset)
+    gap = float(np.linalg.norm(hand - d.geom_xpos[scene.handle_id]))
+    pulled, angle = math.degrees(d.qpos[scene.door_qadr]), math.degrees(scene.door_angle())
+    success = angle >= card["success"]["min_angle_deg"]
+    if success:
+        reason = "ok"
+    elif max(pos_err["approach"], pos_err["pull"]) > IK_FAIL:
+        reason = "not_reached"
+    elif pulled < 5:
+        reason = "missed_handle"
+    elif gap > 0.025:
+        reason = "slipped_off_handle"
+    else:
+        reason = "door_not_open"
+    return Result(success, reason, pos_err, rot_err, {"door_deg": round(angle, 1), "after_pull_deg": round(pulled, 1),
+                                                      "hand_to_handle_m": round(gap, 4)}, history)
+
+
 def run_skill(scene: Scene, card, seen, on_tick=None):
+    if scene.refusal:
+        return Result(False, scene.refusal[0], cube_at={"why": scene.refusal[1]})
+    if card.get("kind") == "open":
+        return _run_open(scene, card, seen, on_tick)
+    if card.get("kind") == "carry":
+        from . import carry
+        return carry.run(scene, card, seen, on_tick)
     waypoints = translate(card, scene, seen, check=lambda wps: reach_miss(scene, wps))
     ticks, pos_err, rot_err = plan(scene, waypoints)
     history, cube_at = run(scene, ticks, on_tick=on_tick)
-    lifted = cube_at["lift"][2] - TABLE_TOP > 0.05
-    held_to_bowl = cube_at["lower"][2] - TABLE_TOP > 0.04
+    rest = TABLE_TOP + scene.held_half
+    lift = next(w for w in waypoints if w.label == "lift")
+    lifted = cube_at["lift"][2] - rest > 0.5 * (lift.pos[2] - waypoints[1].pos[2])
+    held_to_bowl = (cube_at["lower"][2] - rest > 0.006 + 0.005
+                    and np.linalg.norm(cube_at["lower"][:2] - scene.bowl_pos()[:2]) < scene.container_xy + 0.02)
     success = scene.cube_in_bowl()
     if success:
         reason = "ok"

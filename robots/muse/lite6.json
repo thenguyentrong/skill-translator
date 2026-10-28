@@ -1,0 +1,34 @@
+{
+ "name": "lite6",
+ "xml": "mujoco_menagerie/ufactory_lite6/lite6_gripper_wide.xml",
+ "ee_site": "end_effector",
+ "gripper": "gripper",
+ "gripper_open": -10.0,
+ "gripper_closed": 10.0,
+ "base_pos": [
+  0.0,
+  0.0,
+  0.0
+ ],
+ "base_yaw": 0.0,
+ "fixed_base": false,
+ "approach_axis": "+z",
+ "closing_axis": "+y",
+ "grip_offset": [
+  0.0,
+  0.0,
+  0.0
+ ],
+ "fixed_jaw": false,
+ "notes": "ee_site end_effector already at grip centre tip pos 0 0 0.0811 in gripper_body per comment. approach +z from gripper_body origin 0,0,0 to tip 0,0,0.0811 and finger bodies at 0,0,0.054. closing +y because both finger slide joints axis 0 1 0; left pos y-0.01 range -0.0081->0, right y+0.01 range 0->0.0081 symmetric via equality. motor gripper drives left_finger ctrlrange -10 to 10 forcerange -10 10, negative opens, positive closes. home keyframe 0 0 1.57 0 1.57 0 is elbow up but joint2 0 may be low; lifted joint2 to 0.25 and joint5 1.2 to raise hand above table z=0.75; arm base_pos 0,0,0 on table",
+ "home": "home",
+ "ready": {
+  "joint1": 0.0,
+  "joint2": 0.25,
+  "joint3": 1.57,
+  "joint4": 0.0,
+  "joint5": 1.2,
+  "joint6": 0.0
+ },
+ "payload_kg": 0.6
+}

@@ -1,0 +1,51 @@
+{
+ "name": "fr3",
+ "xml": "mujoco_menagerie/franka_fr3/fr3.xml",
+ "ee_site": "tool/pinch",
+ "gripper": "tool/fingers_actuator",
+ "gripper_open": 0,
+ "gripper_closed": 255,
+ "base_pos": [
+  0,
+  0,
+  0
+ ],
+ "base_yaw": 0,
+ "fixed_base": false,
+ "approach_axis": "+z",
+ "closing_axis": "+y",
+ "grip_offset": [
+  0,
+  0,
+  0
+ ],
+ "fixed_jaw": false,
+ "orientation_cost": 0.1,
+ "notes": "fr3 has no gripper - attaching Robotiq 2F85 at attachment_site (0 0 0.107 on fr3_link7). flange site present so tool +z out of wrist matches arm +z. ee_site tool/pinch between fingertips after attach. approach +z is standard for this tool (moves along z to grasp). closing assumed +y (fingers move along y) - most common for 2F85; if test shows x, will swap. home uses provided keyframe home which is above table for arm on table base (0,0,0.75). gripper ctrl 0 open,255 closed per tool spec.",
+ "tool": [
+  "fr3_link7",
+  "mujoco_menagerie/robotiq_2f85/2f85.xml",
+  [
+   0,
+   0,
+   0.107
+  ],
+  [
+   1,
+   0,
+   0,
+   0
+  ]
+ ],
+ "home": "home",
+ "ready": {
+  "fr3_joint1": 0,
+  "fr3_joint2": 0,
+  "fr3_joint3": 0,
+  "fr3_joint4": -1.57079,
+  "fr3_joint5": 0,
+  "fr3_joint6": 1.57079,
+  "fr3_joint7": -0.7853
+ },
+ "payload_kg": 3.0
+}

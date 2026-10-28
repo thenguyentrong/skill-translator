@@ -1,0 +1,67 @@
+{
+ "name": "kiwi_to_bowl",
+ "goal": "A kiwi is resting on top of the fruit in the wooden bowl.",
+ "objects": {
+  "kiwi": {
+   "shape": "sphere",
+   "size": [
+    0.05,
+    0.05,
+    0.05
+   ],
+   "color": "brown"
+  },
+  "bowl": {
+   "shape": "bowl",
+   "inner_radius": 0.11,
+   "wall_height": 0.04,
+   "color": "brown"
+  }
+ },
+ "grip": {
+  "object": "kiwi",
+  "approach": "top",
+  "between": "opposite faces",
+  "width": 0.05
+ },
+ "steps": [
+  {
+   "do": "reach",
+   "to": "above",
+   "object": "kiwi"
+  },
+  {
+   "do": "descend",
+   "object": "kiwi"
+  },
+  {
+   "do": "close"
+  },
+  {
+   "do": "lift",
+   "height": 0.1
+  },
+  {
+   "do": "carry",
+   "to": "above",
+   "object": "bowl"
+  },
+  {
+   "do": "lower",
+   "into": "bowl"
+  },
+  {
+   "do": "open"
+  },
+  {
+   "do": "retreat",
+   "height": 0.1
+  }
+ ],
+ "success": {
+  "test": "on_top",
+  "object": "kiwi",
+  "container": "bowl"
+ },
+ "source": "Written by Muse Spark 1.3 from data/videos/kiwi_into_bowl.mp4 (\"Person Putting a Kiwi on Bowl of Fruits\", Kaboompics, Pexels 6989169) + SAM 3.1 tracks"
+}
