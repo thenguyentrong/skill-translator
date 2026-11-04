@@ -29,17 +29,21 @@ JUDGE_SCHEMA = {
     "required": ["same_task", "looks_done", "what_happened", "cause", "fix_in", "suggestion", "confidence"],
 }
 
-FIELDS = ["grip.approach", "grip.between", "grip.width", "held.size", "container.inner_radius", "container.wall_height",
-          "lift.height", "retreat.height"]
+FIELDS = ["grip.width", "grip.table_gap", "held.size", "container.inner_radius", "container.wall_height", "lift.height", "retreat.height"]
+TASK_FIELDS = ("held.size", "container.inner_radius", "container.wall_height")  # these change the test, not the skill
 FIELD_HELP = """What each field does in the translator:
-- grip.approach: "top" = the hand comes straight down; "side" = it comes in level with the table.
-- grip.between: "opposite faces" = the fingers close on two flat faces; "around" = on a round object.
+- The hand always comes straight down and closes level with the table; there is no field to change that.
 - grip.width: the object's width between the fingers. The gripper opens a little wider than this and always closes
   until it touches, so this does NOT set how hard it squeezes.
+- grip.table_gap: how far above the table the fingertips stop before the hand closes, in metres (normally 0.003).
+  It limits how low the hand can get, so how much of a low object's side the fingers can reach. Too small risks
+  scraping the table; it cannot be below 0.
 - held.size: the object's real size [width, depth, height] in metres (the simulator builds it this size).
 - container.inner_radius / container.wall_height: the container's size.
 - lift.height / retreat.height: how high the hand goes after closing / after letting go.
-Each robot also practises how deep to grip on its own, so grip depth is not a card field."""
+Each robot practises how deep to grip on its own, but its fingertips always stop grip.table_gap above the table.
+A size change is tried and shown, but a bigger or smaller object is a different test, so it cannot be kept as a gain:
+change a size only if the video shows the number is wrong."""
 
 IMPROVE_SCHEMA = {
     "type": "object",
@@ -79,13 +83,22 @@ def judge(human_video, robot_clip, card, robot, result):
                 JUDGE_SCHEMA, "robot_check")
 
 
+def _why_not(t):
+    if t.get("changes_task"):
+        return "a different object is a different test"
+    if t.get("worse"):
+        return f"{', '.join(t['worse'])} lost more than 1 try, and no robot may"
+    return "no more tries passed"
+
+
 def improve(human_video, card, rows, judgments, tried=()):
     table = "\n".join(f"- {r['robot']}: {r['success']}/{r['n']} passed, failures {json.dumps(r['fails'])}"
                       + (f"; check: {json.dumps(judgments[r['robot']])}" if r["robot"] in judgments else "") for r in rows)
-    history = "".join(f"\nAlready tried: {json.dumps(t['changes'])} -> {t['score']} passed (before {t['before']}), not kept."
-                      for t in tried)
+    history = "".join(f"\nAlready tried: {json.dumps(t['changes'])} -> {t['score']} passed (before {t['before']}), per robot "
+                      f"{json.dumps({r['robot']: r['success'] for r in t['rows']})}. Not kept: {_why_not(t)}." for t in tried)
     text = (f"Skill card:\n{json.dumps(card)}\n\nEvery robot ran it in simulation:\n{table}\n{history}\n\n"
-            f"{FIELD_HELP}\n\nPropose changes to the card that would help most robots, different from what was already tried. "
+            f"{FIELD_HELP}\n\nPropose a change to the card that would help most robots, different from what was already tried. "
+            "Change one field per round, so the result can be traced to it. "
             "Return no changes if the card is fine or nothing new would help.")
     return _ask("You improve a robot skill card that was written from the attached video. The card holds the meaning of "
                 "the task; keep the goal and the objects' identity. Change only the listed fields, only with evidence "
@@ -105,16 +118,21 @@ def apply(card, changes):
         except json.JSONDecodeError:
             value = c["value"]
         field = c["field"]
-        if field in ("grip.approach", "grip.between", "grip.width"):
-            new["grip"][field.split(".")[1]] = value
-        elif field == "held.size" and isinstance(value, list) and len(value) == 3:
-            new["objects"][held]["size"] = [float(v) for v in value]
-        elif field.startswith("container.") and cont:
-            new["objects"][cont][field.split(".")[1]] = float(value)
-        elif field in ("lift.height", "retreat.height"):
-            for s in new["steps"]:
-                if s["do"] == field.split(".")[0]:
-                    s["height"] = float(value)
-        else:
+        try:
+            if field == "grip.width":
+                new["grip"]["width"] = float(value)
+            elif field == "grip.table_gap" and float(value) >= 0:
+                new["grip"]["table_gap"] = float(value)
+            elif field == "held.size" and isinstance(value, list) and len(value) == 3:
+                new["objects"][held]["size"] = [float(v) for v in value]
+            elif field.startswith("container.") and cont:
+                new["objects"][cont][field.split(".")[1]] = float(value)
+            elif field in ("lift.height", "retreat.height"):
+                for s in new["steps"]:
+                    if s["do"] == field.split(".")[0]:
+                        s["height"] = float(value)
+            else:
+                skipped.append(c)
+        except (TypeError, ValueError):
             skipped.append(c)
     return new, skipped

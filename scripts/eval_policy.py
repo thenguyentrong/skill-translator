@@ -132,6 +132,7 @@ def main():
     p.add_argument("--temporal-ensemble", type=float, default=None, metavar="COEFF",
                    help="ACT temporal ensembling (e.g. 0.01): query every tick and average the overlapping chunks")
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    p.add_argument("--out", default=str(OUT), help="folder for the JSON and clips (a folder inside the repo)")
     args = p.parse_args()
     torch.set_num_threads(2)  # batch of 1: more CPU threads only spin (12 cores busy and 3x slower with the default)
 
@@ -182,7 +183,8 @@ def main():
             action = post(policy.select_action(pre(batch)))
         return action.squeeze(0).float().cpu().numpy()
 
-    OUT.mkdir(parents=True, exist_ok=True)
+    out_dir = Path(args.out).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
     tag = f"{args.robot}_{card['name']}_{step}"
     if args.temporal_ensemble is not None:
         tag += f"_te{args.temporal_ensemble:g}"
@@ -255,7 +257,7 @@ def main():
                "wall_s": round(time.time() - t0, 1)}
         rows.append(row)
         if record:
-            name = OUT / f"{tag}_trial{i:02d}_seed{seed}_{reason}.mp4"
+            name = out_dir / f"{tag}_trial{i:02d}_seed{seed}_{reason}.mp4"
             video.save(name)
             row["video"] = str(name.relative_to(ROOT))
         print(f"trial {i:3d} seed {seed}: {'OK  ' if success else 'FAIL'} {reason:17s} lift {row['max_lift_mm']:6.1f} mm, "
@@ -281,7 +283,7 @@ def main():
                                 "dropped": "lifted, but never held above/near the bowl",
                                 "near_bowl_outside": "held near the bowl, but ended outside it"},
     }
-    out = OUT / f"{tag}.json"
+    out = out_dir / f"{tag}.json"
     out.write_text(json.dumps({"summary": summary, "trials": rows}, indent=1))
     print(f"\n{args.robot} {card['name']} step {step}: {len(ok)}/{len(rows)} success "
           f"({summary['success_rate'] * 100:.0f} %), fails {fails}, "

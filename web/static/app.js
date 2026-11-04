@@ -7,6 +7,9 @@ const NO = { "too big": "Too big for its gripper", "too thin": "Too thin for its
 const state = { video: null, job: null, videos: [], robots: [], picked: new Set(), timer: null, last: null };
 
 const pretty = (s) => (s || "").replace(/_/g, " ");
+/* Reasons come from the simulator with its ids in them: the page says "SO-101" and "the small cardboard box". */
+const ROBOT_IDS = new RegExp(`\\bthe (${Object.keys(NAMES).join("|")})\\b`, "gi");
+const plain = (s) => (s || "").replace(ROBOT_IDS, (_, r) => NAMES[r.toLowerCase()]).replace(/\b[a-z0-9]+(?:_[a-z0-9]+)+\b/gi, (w) => pretty(w));
 const name = (r) => NAMES[r] || r;
 const cm = (m) => `${+(m * 100).toFixed(1)} cm`;
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -249,7 +252,7 @@ async function renderCheck(check, checking) {
     } else {
       const [label, ...rest] = answer.split(": ");
       const why = rest.join(": ");
-      card = robotCard(r, [head, el("span", "chip no", NO[label] || label), el("p", "why", why.charAt(0).toUpperCase() + why.slice(1) + ".")]);
+      card = robotCard(r, [head, el("span", "chip no", NO[label] || label), el("p", "why", plain(why.charAt(0).toUpperCase() + why.slice(1)) + ".")]);
       card.classList.add("cannot");
     }
     box.append(card);
@@ -323,7 +326,7 @@ function renderRuns(j) {
       head.append(el("span", "score " + (rate >= 0.8 ? "good" : rate < 0.5 ? "low" : ""), `${m[1]}/${m[2]}`));
     }
     body.append(head);
-    if (r.result && !m) body.append(el("p", "why", r.result));
+    if (r.result && !m) body.append(el("p", "why", plain(r.result)));
     if (r.error) body.append(el("p", "why", r.error));
     if (m) body.append(el("p", "meta", `${m[1]} of ${m[2]} tries ended with the goal true`));
     const t = r.state === "done" ? trainLine(j, robot, r.result) : null;

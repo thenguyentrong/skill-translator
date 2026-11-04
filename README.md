@@ -1,6 +1,13 @@
 # Translator
 
-A translator for robot skills. Film a task once, and any robot can learn it: Meta AI turns the video into a skill card, the skill is translated into each robot's own motions, checked in simulation, and trained per robot.
+**Built with Muse Spark Open.**
+
+Film a job. See which robots can do it, in simulation, before you buy one.
+Mess with it and it still finishes.
+
+Meta AI turns a short video into a skill card. Each robot checks the card against its own body and says yes or no with a reason. The others try it in MuJoCo, and a try counts only if the object ends up where the card says. I have no real robot, so everything here is simulation.
+
+Try it in your browser: https://thenguyentrong.github.io/skill-translator/
 
 ![One video, many robots](docs/media/reel.gif)
 
@@ -10,7 +17,7 @@ A translator for robot skills. Film a task once, and any robot can learn it: Met
 
 Today every robot has to be taught every task on its own, with hours of demos per robot. Translator copies the **meaning** of a task, not the motion.
 
-A **skill card** says what has to happen: the objects, the grip, the steps and how to check success. It says nothing about joints or arm paths. The translator reads each robot's model file (reach, gripper, joint limits), turns the card into that robot's own motion, and proves it in simulation. A small arm and a humanoid can't move the same way, but both can reach the same goal.
+A **skill card** says what has to happen: the objects, the grip, the steps and how to check success. It says nothing about joints or arm paths. The translator reads each robot's model file (reach, gripper, joint limits), turns the card into that robot's own motion, and checks it in simulation. A small arm and a humanoid can't move the same way, but both can reach the same goal.
 
 Two stages, like a class with a teacher:
 
@@ -55,8 +62,8 @@ flowchart LR
 - **Model file → adapter (Meta AI):** for a robot the code has never seen, Muse Spark reads its model file and writes the adapter: grip point, which way the hand points and closes, gripper open/close values, start pose, where the robot stands. The translator then **measures** the adapter (where the hand really points, which way the fingers move, how wide the gripper opens, what the hand bumps into, how high the robot stands) and **tests** it on two skills. If it fails, the numbers, the failures and three replay frames go back to Muse, which fixes the adapter. At most 3 fixes.
 - **Needs:** the card also says what the task needs: hands, how far the person walks, weight. Each robot checks this against its own body first and says no with a reason ("needs two hands", "must walk", "too heavy", "too big for its gripper") instead of trying.
 - **Practice:** the card says where to hold an object, not how deep each gripper must go (a Robotiq closes on an arc, the SO-101 has one fixed jaw, a lemon rolls where a cube sits). Before a robot is tested, it tries a few grip depths on practice layouts and keeps the one that holds.
-- **Vision:** every robot has a front, a top and a wrist camera, and finds the objects in its own images (colour + depth), not from the simulator.
-- **IK + physics:** [mink](https://github.com/kevinzakka/mink) solves every control step (25 Hz) with joint speed limits and keeps the arm away from the robot's own body, then MuJoCo runs it with the robot's own motors. Nothing is moved by hand.
+- **Vision:** every robot has a front, a top and a wrist camera, and finds the objects in its own images (colour + depth, the objects are painted red and green), not from the simulator's positions.
+- **IK + physics:** [mink](https://github.com/kevinzakka/mink) solves every control step (25 Hz) with joint speed limits and keeps the arm away from the robot's own body, then MuJoCo runs it with the robot's own motors. Except where a clip says so, nothing is moved by hand.
 - **Check and improve (Meta AI):** Muse Spark watches each robot's failed try next to the human video, says what went wrong and if the fix is in the card or in that robot, and proposes card changes. A change is kept only if more tries pass on the same layouts.
 - **Data + training:** checked runs become a [LeRobot](https://github.com/huggingface/lerobot) dataset per robot (state, action, 3 camera images), and each robot trains its own ACT policy.
 
@@ -78,7 +85,7 @@ The cabinet from the video is real furniture: its door swings wider than any of 
 
 ### Robots the code had never seen
 
-Muse writes the adapter from the model file alone. Test = 5 trials of `cube_to_bowl` + 5 of `block_to_plate` (a long block gripped across its narrow side, so a wrong closing axis shows up), with camera vision.
+Muse writes the adapter from the model file alone. Test = 5 trials of `cube_to_bowl` + 5 of `block_to_plate` (a long block gripped across its narrow side, so a wrong closing axis shows up), with camera vision. The UR5e already had my hand-written adapter, so its row is a check against that one.
 
 | Robot | What it is | Adapter written by | Fix rounds | Test | Meta API cost |
 |---|---|---|---|---|---|
@@ -93,7 +100,7 @@ Muse writes the adapter from the model file alone. Test = 5 trials of `cube_to_b
 
 LimX ships Oli's gripper only as URDF, so [`scripts/limx_gripper.py`](scripts/limx_gripper.py) puts their wrist and gripper on their MuJoCo model. In round 2 the robot cut into the table, which counts 0. TALOS and Booster T1 did not pass: TALOS's gripper closes only to about 37 mm at the grip point Muse chose, and the T1's arm has no wrist, so it cannot point a gripper down. A robot is only added to the library when it passes; every robot must also stand clear of the table.
 
-My hand-written UR5e adapter and the one Muse wrote have the same grip axes, and both get 50/50 on all five skills below.
+My hand-written UR5e adapter and the one Muse wrote have the same grip axes, and both get 50/50 on ball_to_cup, block_to_plate, can_to_bin, cube_to_bowl and lemon_to_bowl.
 
 ### Skill library × robot library
 
@@ -123,7 +130,7 @@ The SO-101 is a small arm, and the lemon and the ball are near the limit of its 
 
 ![Eight robots open a door](docs/media/door.gif)
 
-*A cabinet door on a real hinge: grip the handle, pull along the arc while the hand turns with the door. 7 of 9 robots can do it.*
+*A cabinet door on a real hinge: grip the handle, pull along the arc while the hand turns with the door. 5 of 9 robots reach 8/10.*
 
 ![Carry from table A to table B](docs/media/carry.gif)
 
@@ -131,7 +138,37 @@ The SO-101 is a small arm, and the lemon and the ball are near the limit of its 
 
 ### Check and improve
 
-First run on the cookie skill (2 rounds, $0.17): Muse got the problem right for 4 of 5 robots ("closes on the cookie but never holds it; the person pinches it at the edge") and made the grip width smaller. That changed nothing (50 tries passed before and after), so the card stayed the same. The grip width only sets how far the gripper opens, so Muse now gets a short list of what each field does and what was already tried.
+Muse Spark watches a robot's failed try next to the human video, says what went wrong, and proposes one card change. The change stays only if more tries pass on the same layouts and no robot loses more than one.
+
+On the cookie skill it kept one change: let the fingertips stop 1 mm above the table instead of 3 mm. 48 passes became 57, and on 30 new layouts per robot 143 became 161. The gain is the G1 (2/30 to 17/30); the other robots stayed about the same, SO-101 still fails, and a 1 mm stop would need careful calibration on a real robot. The field was added by hand after physics tests pointed there, then Muse chose to use it and chose the value. It took a few tries: earlier proposals were rejected by the rule above, and the first run gained nothing. On the lemon, Muse said the card was fine and changed nothing.
+
+![Muse changes the card, G1 before and after](docs/media/review_g1.gif)
+
+### Mess with it
+
+The runs above are planned once and replayed. `translator/live.py` runs a 25 Hz loop instead: it looks through the robot's cameras, finds which card step is true now, and does one IK step. Move the object and the hand re-aims. Knock it out of the gripper and the robot goes back for it. Take it out of the bowl and it starts again. There is no training and no robot-specific code. Holding is read from contact between fingers and object, a stand-in for a gripper force sensor.
+
+Same layouts and same disturbance, replay against live:
+
+| Cube, 6 robots, 10 tries each | Replay | Re-plan after each run | Live loop |
+|---|---|---|---|
+| no disturbance | 54/60 | 57/60 | 57/60 |
+| moved 5-10 cm mid-reach | 0/60 | 59/60 | 56/60 |
+| taken away mid-descend | 0/60 | 58/60 | 54/60 |
+| taken out of the gripper mid-carry | 0/60 | 60/60 | 53/60 |
+| removed from the container after done | 0/60 | 57/60 | 54/60 |
+| stick shoves it mid-reach | 0/60 | 57/60 | 53/60 |
+| stick shoves it mid-descend | 6/60 | 54/60 | 52/60 |
+| stick hits it out of the gripper mid-carry | 43/60 | 53/60 | 50/60 |
+| **all disturbed** | **49/420** | **398/420** | **372/420** |
+
+UR5e, xArm7, FR3, TienKung 3, G1 and SO-101, scripted disturbances, cube only. Replay is the floor. A simple re-plan from the card does as well or better, so the point is the card: it holds the goal, and that makes recovery possible at all. The live loop's difference is that it reacts during the motion, while re-plan finishes its run first. On live, TienKung 3 is the weakest (44/70, the others 60 to 69).
+
+The lemon from the video is harder: live 180/420 disturbed, replay 35/420, and G1 and SO-101 fail it even undisturbed. Live 25 Hz control takes about 12 ms per tick; the cameras look 12.5 times a second.
+
+### Referee
+
+SAM 3.1 can judge a robot's clip from the video alone, with no simulator data. On 40 clean simulated clips it agreed with the simulator 39 times, at about $0.02 and 5 s per clip. Details and limits: [docs/referee.md](docs/referee.md).
 
 ### Trained policies
 
@@ -143,17 +180,20 @@ First run on the cookie skill (2 rounds, $0.17): Muse got the problem right for 
 
 *The same for the G1 humanoid: its own policy, trained on its own checked runs of the cube skill, 37 of 50 new layouts.*
 
+On the same 20 layouts, the UR5e policy passed 6, 6, 13 and 15 times after 10k, 20k, 30k and 40k steps. Trained policies are still behind the planned motion.
+
 Each robot's checked runs become a LeRobot dataset (200 episodes: joint states, actions, front/top/wrist images), and one ACT policy per robot learns from it. The policy is then tested on 50 new layouts it never saw, with nothing but its own cameras and joint states.
 
 | Robot | Skill | Dataset | Training | Test on new layouts |
 |---|---|---|---|---|
 | SO-101 | cube_to_bowl | 200 episodes (200 of 212 tries passed the check) | 40k steps, about 45 min | **24/50 (48 %)**; 5/20 after 10k steps |
-| UR5e | lemon_to_bowl (the skill from the video) | 200 episodes (200 of 203) | 40k steps, about 40 min | **35/50 (70 %)** |
+| UR5e | lemon_to_bowl (the skill from the video) | 200 episodes (200 of 203) | 40k steps, about 40 min | **32/50 (64 %)**; 35/50 with temporal ensembling |
 | Panda | cube_to_bowl | 200 episodes (200 of 216) | 40k steps, about 40 min | **19/50 (38 %)** |
 | G1 (humanoid) | cube_to_bowl | 200 episodes (200 of 236) | 40k steps, about 40 min | **37/50 (74 %)** |
 | xArm7 (adapter by Muse) | lemon_to_bowl (the skill from the video) | 200 episodes (200 of 202) | 40k steps, about 42 min | **33/50 (66 %)** |
 | FR3 (adapter by Muse) | lemon_to_bowl (the skill from the video) | 200 episodes (200 of 205) | 40k steps, about 44 min | **26/50 (52 %)** |
 | TienKung 3 (adapter by Muse) | lemon_to_bowl (the skill from the video) | 200 episodes (200 of 229) | 40k steps, about 40 min | **29/50 (58 %)** |
+| UR5e with recovery data | lemon_to_bowl (the skill from the video) | 200 episodes | 40k steps | **30/50 (60 %)**, no gain: the same policy without it scores 33/50 on tonight's code |
 
 ## Swap robots and skills
 
@@ -172,6 +212,14 @@ Add a new robot from its model file:
 ```
 
 Or in the browser (runs on your own PC for now): `scripts/web.sh`, then open http://127.0.0.1:8000. Upload a video, see what Meta AI understood, see which robots can do it, pick some and watch them try.
+
+Public site: https://thenguyentrong.github.io/skill-translator/. UR5e, Panda and xArm7 run in your browser with MuJoCo. Drag the cube or knock it out, or set a job and see what the 9 robots answer. There the cube position comes from the simulator, and the video step is not on the site.
+
+Mess with a robot on your own PC:
+
+```bash
+.venv/bin/python scripts/live.py ur5e --skill cube_to_bowl   # double-click the object, Ctrl + right-drag to move it
+```
 
 Teach a new skill from a video:
 
@@ -213,6 +261,10 @@ MUJOCO_GL=egl .venv/bin/python scripts/smoke_test.py      # MuJoCo, mink, render
 | `translator/carry.py`, `mobile.py` | carry kind: crate and basket, sliding base between tables |
 | `translator/review.py` | Muse checks robot tries against the video and changes the card |
 | `web/` | local web app: JSON API + one page |
+| `translator/live.py`, `scripts/live.py` | live loop, viewer and replay-against-live test |
+| `site/` | public site: MuJoCo in the browser, job check |
+| `translator/referee.py`, `docs/referee.md` | SAM 3.1 judges a robot clip from video alone |
+| `THIRD_PARTY.md` | licences and credits |
 | `scripts/` | jobs, matrix, adapters, datasets, training eval, live viewer, media |
 
 ## Next
@@ -224,12 +276,26 @@ MUJOCO_GL=egl .venv/bin/python scripts/smoke_test.py      # MuJoCo, mink, render
 - Training for the door and carry skills
 - Run everything in the cloud, then a web tool: upload a short video, pick robots, watch each one do the task
 
+## Built during the hackathon (26 Oct to 4 Nov 2026)
+
+Everything here was built for the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/details). Kickoff was 26 Oct at 17:00 CET and the repo starts at 17:35 CET. The work from 27 Oct is in the 28 Oct commit.
+
+| Date | Commits | What |
+|---|---|---|
+| 26 Oct | `043fe99` to `6a616b8` | Project brief and setup notes |
+| 26 Oct | `ec48321` | Scene, four robots, cube skill card, waypoints, IK, physics run, camera vision, live viewer |
+| 26 Oct | `37ab79a` to `67530e6` | README and media script |
+| 26 Oct | `e33495f` | G1 grasp design, IK that avoids the robot's own body |
+| 28 Oct | `ac72150` | Video to card with SAM 3.1 and Muse Spark, skill and robot libraries, adapters written by Muse with the measure, test and fix loop, grip practice, door and carry skills, needs check, skills × robots test, LeRobot datasets and ACT tests, check and improve |
+| 28 Oct | `99503a9`, `bf838cb` | Local web app, `run_job --check`, recovery data option for datasets |
+| 4 Nov | latest commits | Live loop, replay-against-live test, public site, SAM referee, voice notes |
+
 ## Credits
 
-Built during the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon/details) (26 Oct - 4 Nov 2026). Meta models: SAM 3.1 and Muse Spark 1.3 (Meta Model API), Muse Spark Open (open weights, on Baseten and Fireworks).
+Meta models: SAM 3.1 and Muse Spark 1.3 (Meta Model API), Muse Spark Open (open weights, on Baseten and Fireworks).
 
-Robot models (downloaded by `scripts/fetch_robots.sh`, not stored in this repo, each keeps its own license): [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie) (Franka Panda and FR3, UR5e, Robotiq 2F-85, Unitree G1, uFactory xArm7 and Lite6, PAL TALOS, Booster T1), [SO-ARM100](https://github.com/TheRobotStudio/SO-ARM100) (SO-101), [LimX Dynamics humanoid-description](https://github.com/limxdynamics/humanoid-description) (Oli and its gripper, Apache-2.0), [X-Humanoid xSIM_MUJOCO](https://github.com/Open-X-Humanoid/xSIM_MUJOCO) (TienKung 3, Apache-2.0).
+Robot models (downloaded by `scripts/fetch_robots.sh`, each keeps its own license; only the reduced UR5e, Robotiq, Panda and xArm7 models for the site are stored in this repo, in `site/public/models/`): [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie) (Franka Panda and FR3, UR5e, Robotiq 2F-85, Unitree G1, uFactory xArm7 and Lite6, PAL TALOS, Booster T1), [SO-ARM100](https://github.com/TheRobotStudio/SO-ARM100) (SO-101), [LimX Dynamics humanoid-description](https://github.com/limxdynamics/humanoid-description) (Oli and its gripper, Apache-2.0), [X-Humanoid xSIM_MUJOCO](https://github.com/Open-X-Humanoid/xSIM_MUJOCO) (TienKung 3, Apache-2.0).
 
 Test videos (Pexels License): "Person Putting Orange in Bowl" by SHVETS production ([Pexels](https://www.pexels.com/video/person-putting-orange-in-bowl-7198787/)), "A Person Transferring Cookies on the Plate" by Polina Tankilevitch ([Pexels](https://www.pexels.com/video/a-person-transferring-cookies-on-the-plate-4110527/)), "Person Putting a Kiwi on Bowl of Fruits" by Kaboompics ([Pexels](https://www.pexels.com/video/person-putting-a-kiwi-on-bowl-of-fruits-6989169/)), "A Person Putting Potato in a Basket" by Tima Miroshnichenko ([Pexels](https://www.pexels.com/video/a-person-putting-potato-in-a-basket-7876937/)), "Young Woman Taking Mug out of Cupboard" by Ivan S ([Pexels](https://www.pexels.com/video/young-woman-taking-mug-out-of-cupboard-5515109/)), "A woman is moving boxes in a room" by cottonbro studio ([Pexels](https://www.pexels.com/video/a-woman-is-moving-boxes-in-a-room-4554453/)).
 
-Simulation with [MuJoCo](https://github.com/google-deepmind/mujoco), IK with [mink](https://github.com/kevinzakka/mink), learning with [LeRobot](https://github.com/huggingface/lerobot).
+Simulation with [MuJoCo](https://github.com/google-deepmind/mujoco), IK with [mink](https://github.com/kevinzakka/mink), learning with [LeRobot](https://github.com/huggingface/lerobot). The site uses [three.js](https://github.com/mrdoob/three.js) and the Archivo and Martian Mono fonts (OFL). Licences: [THIRD_PARTY.md](THIRD_PARTY.md).

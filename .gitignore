@@ -8,3 +8,6 @@ outputs/
 runs/
 .claude/
 MUJOCO_LOG.TXT
+site/node_modules/
+site/.vercel/
+site/tools/raw/

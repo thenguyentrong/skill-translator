@@ -1,16 +1,18 @@
-"""Meta Model API: SAM 3.1 tracking and Muse Spark calls. Keys come from .env and are never printed."""
+"""Meta Model API: SAM 3.1 tracking, Muse Spark calls and Muse Voice Transcribe. Keys come from .env and are never printed."""
 import base64
 import json
 import os
 import re
 import urllib.error
 import urllib.request
+import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 API = "https://api.meta.ai/v1"
 SAM_PRICE_PER_FRAME = 0.20 / 1000
 SAM_MIN_FRAMES = 50
+VOICE_PRICE_PER_S = 0.18 / 3600
 
 _BOX = re.compile(r"(\d+)<\|box;x1=(\d+);y1=(\d+);x2=(\d+);y2=(\d+);w=(\d+);h=(\d+)(?:;c=([\d.]+))?\|>")
 _FRAME = re.compile(r"^\s*<(\d+)f>")
@@ -89,3 +91,22 @@ def sam_track(video_path, prompt, confidence=True):
     billed = (usage or {}).get("video_frames_processed")
     cost = max(billed or 0, SAM_MIN_FRAMES) * SAM_PRICE_PER_FRAME if billed is not None else None
     return {"prompt": prompt, "size": size, "frames": frames, "usage": usage, "cost_usd": cost}
+
+
+def transcribe(wav_path, model="muse-voice-transcribe-1.0"):
+    """One WAV file (mono, 16-bit PCM, 16 or 24 kHz, up to 10 minutes) -> what was said. Multipart, not /responses."""
+    settings = json.dumps({"model": model, "audioEncoding": "WAV", "mode": "PUSH_TO_TALK"})
+    b = uuid.uuid4().hex
+    body = (f'--{b}\r\nContent-Disposition: form-data; name="request"\r\nContent-Type: application/json\r\n\r\n{settings}\r\n'
+            f'--{b}\r\nContent-Disposition: form-data; name="audio"; filename="note.wav"\r\nContent-Type: audio/wav\r\n\r\n'
+            ).encode() + Path(wav_path).read_bytes() + f"\r\n--{b}--\r\n".encode()
+    req = urllib.request.Request(API + "/asr/transcribe", data=body, headers={
+        "Authorization": f"Bearer {api_key()}", "Content-Type": f"multipart/form-data; boundary={b}",
+        "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=180) as r:
+            out = json.load(r)
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"HTTP {e.code}: {e.read().decode()[:400]}") from None
+    seconds = out.get("audioDurationMs", 0) / 1000
+    return {"text": out["transcript"], "seconds": seconds, "cost_usd": int(seconds) * VOICE_PRICE_PER_S}

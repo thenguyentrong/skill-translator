@@ -1,7 +1,7 @@
 """A skill gets better in a loop: every robot runs the card, Muse Spark checks the runs against the human video and
-improves the card, and the new card is kept only if more tries pass on the same layouts.
+improves the card, and the new card is kept only if more tries pass on the same layouts with the same objects.
 
-  review_job.py outputs/jobs/cookie_into_plate [--rounds 2] [--trials 10] [--robots so101 g1 ...] [--judge 6]
+  review_job.py outputs/jobs/cookie_into_plate [--rounds 2] [--trials 10] [--robots so101 g1 ...] [--judge 6] [--workers 6]
 Writes <job>/review/round<k>/ (card.json, clips) and <job>/review/review.json with every check, change and score;
 the best card goes to <job>/card_reviewed.json.
 """
@@ -20,19 +20,19 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import matrix
 from translator import review
-from translator.practice import ensure
+from translator.practice import practice
 from translator.robots import ROBOTS
 
 SEED = 0
 
 
-def run_round(card, robots, trials, out):
+def run_round(card, robots, trials, out, workers=None):
     out.mkdir(parents=True, exist_ok=True)
     (out / "card.json").write_text(json.dumps(card, indent=1))
-    for r in robots:
-        ensure(r, card)
+    for r in robots:  # always fresh: saved practice goes by card name, and <name>_r1 is a different card on every run
+        practice(r, card, workers=workers or 30)
     matrix.OUT = out  # the forked workers write their clips here
-    with Pool(min(12, len(robots))) as pool:
+    with Pool(min(workers or 12, len(robots))) as pool:
         rows = list(pool.imap_unordered(matrix.cell, [(card["name"], card, r, trials, SEED, "fail") for r in robots]))
     return sorted(rows, key=lambda r: robots.index(r["robot"]))
 
@@ -52,6 +52,7 @@ def main():
     p.add_argument("--trials", type=int, default=10)
     p.add_argument("--robots", nargs="*", default=[n for n in ROBOTS if not n.endswith("_muse")])
     p.add_argument("--judge", type=int, default=6, help="robots Muse checks per round (most failures first)")
+    p.add_argument("--workers", type=int, help="most processes at once (default: 30 to practise, 12 to run)")
     args = p.parse_args()
     job = Path(args.job)
     video = ROOT / json.loads((job / "report.json").read_text())["video"]
@@ -61,7 +62,7 @@ def main():
     cost = 0.0
 
     card, name = base, base["name"]
-    rows = run_round(card, args.robots, args.trials, out / "round0")
+    rows = run_round(card, args.robots, args.trials, out / "round0", args.workers)
     best = {"card": card, "rows": rows, "score": score(rows), "round": 0}
     log["round0"] = {"rows": rows, "score": best["score"]}
     print(f"round 0: {best['score']} passed  " + ", ".join(f"{r['robot']} {r['success']}/{r['n']}" for r in rows), flush=True)
@@ -89,16 +90,21 @@ def main():
             break
         card, skipped = review.apply(best["card"], plan["changes"])
         card["name"] = f"{name}_r{k}"
-        rows = run_round(card, args.robots, args.trials, out / f"round{k}")
+        rows = run_round(card, args.robots, args.trials, out / f"round{k}", args.workers)
         new = score(rows)
         worse = [r["robot"] for r, o in zip(rows, best["rows"]) if r["success"] < o["success"] - 1]
-        kept = new > best["score"] and not worse
-        entry.update(skipped=skipped, rows=rows, score=new, before=best["score"], kept=kept, worse=worse)
+        changes_task = any(c["field"] in review.TASK_FIELDS for c in plan["changes"])  # an easier object is no gain
+        kept = new > best["score"] and not worse and not changes_task
+        entry.update(skipped=skipped, rows=rows, score=new, before=best["score"], kept=kept, worse=worse,
+                     changes_task=changes_task)
         log["rounds"].append(entry)
         print(f"round {k}: {new} passed (before {best['score']}){' - kept' if kept else ' - not kept'}"
+              f"{' (object changed, a different test)' if changes_task else ''}"
               f"{f', worse on {worse}' if worse else ''}  " + ", ".join(f"{r['robot']} {r['success']}/{r['n']}" for r in rows), flush=True)
         if kept:
             best = {"card": card, "rows": rows, "score": new, "round": k}
+        log.update(best_round=best["round"], best_score=best["score"], api_cost_usd=round(cost, 4))
+        (out / "review.json").write_text(json.dumps(log, indent=1))  # every round: a stopped run keeps what it paid for
     log.update(best_round=best["round"], best_score=best["score"], api_cost_usd=round(cost, 4))
     (out / "review.json").write_text(json.dumps(log, indent=1))
     (job / "card_reviewed.json").write_text(json.dumps({**best["card"], "name": name}, indent=1))

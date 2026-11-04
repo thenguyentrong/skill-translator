@@ -286,7 +286,7 @@ def practice_file(robot_name, card):
     return PRACTICE / f"{robot_name}__{card['name']}.json"
 
 
-def build(name, card=None, grip_depth=None):
+def build(name, card=None, grip_depth=None, stick=False):
     """`name` = a robot from the library, an adapter file, or a Robot. `grip_depth` (m) moves the grip point past
     the object's centre along the approach; by default it comes from this robot's practice with this card, else 0."""
     robot = name if isinstance(name, Robot) else get(name)
@@ -338,6 +338,9 @@ def build(name, card=None, grip_depth=None):
     rspec, home = _robot_spec(robot, keep_free=slides)
     yaw = robot.base_yaw
     base = np.array([robot.base_pos[0], robot.base_pos[1], TABLE_TOP + robot.base_pos[2]])
+    if stick:  # a kinematic capsule under the floor until live.Stick uses it; normal contact forces
+        body = world.add_body(name="stick", mocap=True, pos=[0, 0, -1])
+        body.add_geom(name="stick", type=mujoco.mjtGeom.mjGEOM_CAPSULE, size=[0.012, 0.15, 0], rgba=[0.25, 0.3, 0.42, 1])
     frame = world.add_frame(pos=base, quat=[math.cos(yaw / 2), 0, 0, math.sin(yaw / 2)])
     root = rspec.worldbody.first_body()
     root_name, root_pos = PREFIX + root.name, np.array(root.pos, dtype=float)
@@ -642,8 +645,11 @@ class Scene:
         pick = lambda bs: [g for g in range(m.ngeom) if m.geom_bodyid[g] in bs and m.geom_contype[g]]
         return pick(one), pick(two)
 
-    def gripper_gap(self, ctrl, steps=300):
-        """Opening (m) at the grip point along the closing axis, like a caliper, with the gripper motor at `ctrl`."""
+    def gripper_gap(self, ctrl, steps=300, raw_ray=False):
+        """Opening (m) at the grip point along the closing axis, like a caliper, with the gripper motor at `ctrl`.
+        A fixed jaw has only one ray, and a moving jaw opened wide swings past it: the ray misses, or flies on to
+        whatever is behind (the card's own box). The opening is then how far the jaw tip stands off the grip point.
+        raw_ray=True returns the plain ray value instead: fit_gripper decides on that (see there)."""
         m, r = self.model, self.robot
         d = mujoco.MjData(m)
         mujoco.mj_copyData(d, m, self.data)
@@ -658,12 +664,28 @@ class Scene:
             dist = mujoco.mj_ray(m, d, point, direction, None, 0, -1, hit)
             gap += dist if dist >= 0 else 0.15
             missed |= dist < 0
+        if r.fixed_jaw and not raw_ray:
+            jaw = self._gripper_sides()
+            if jaw and jaw[0] and (missed or m.geom_bodyid[hit[0]] not in m.geom_bodyid[jaw[0]]):
+                return max(float(((self._geom_points(d, g) - point) @ closing).max()) for g in jaw[0])
+            return gap
         sides = self._gripper_sides() if missed and not r.fixed_jaw else None
         if sides and sides[0] and sides[1]:  # fingertips closed past the grip point: the rays start inside a finger
             touch = min(mujoco.mj_geomDistance(m, d, a, b, 0.01, None) for a in sides[0] for b in sides[1])
             if touch < 0.005:
                 return max(0.0, touch)
         return gap
+
+    def _geom_points(self, d, g):
+        """Points on geom `g` in the world: mesh vertices, else the corners of its box."""
+        m = self.model
+        if m.geom_type[g] == int(mujoco.mjtGeom.mjGEOM_MESH):
+            k = m.geom_dataid[g]
+            local = m.mesh_vert[m.mesh_vertadr[k]:m.mesh_vertadr[k] + m.mesh_vertnum[k]]
+        else:
+            corners = np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)], dtype=float)
+            local = m.geom_aabb[g, :3] + corners * m.geom_aabb[g, 3:]
+        return d.geom_xpos[g] + local @ d.geom_xmat[g].reshape(3, 3).T
 
     def _hand_geoms(self):
         """Collision geoms of the hand: everything below the body that carries the grip site."""
@@ -686,17 +708,7 @@ class Scene:
         rot = d.site_xmat[self.ee_site_id].reshape(3, 3)
         point = d.site_xpos[self.ee_site_id] + rot @ np.array(r.grip_offset)
         approach = rot @ _axis_vec(r.approach_axis)
-        corners = np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)], dtype=float)
-        reach = 0.0
-        for g in geoms:
-            if m.geom_type[g] == int(mujoco.mjtGeom.mjGEOM_MESH):
-                k = m.geom_dataid[g]
-                local = m.mesh_vert[m.mesh_vertadr[k]:m.mesh_vertadr[k] + m.mesh_vertnum[k]]
-            else:
-                local = m.geom_aabb[g, :3] + corners * m.geom_aabb[g, 3:]
-            pts = d.geom_xpos[g] + local @ d.geom_xmat[g].reshape(3, 3).T
-            reach = max(reach, float(((pts - point) @ approach).max()))
-        return reach
+        return max([0.0] + [float(((self._geom_points(d, g) - point) @ approach).max()) for g in geoms])
 
     @property
     def refusal(self):
@@ -737,14 +749,16 @@ class Scene:
     def fit_gripper(self, width, clearance=0.02):
         """Keep the adapter's open value when the object fits with `clearance` to spare, else open just wider.
         If the adapter's closed value does not even reach the object's width (a thin handle), close as far as the
-        gripper goes; if no setting reaches it, the gripper cannot hold it (too_thin)."""
+        gripper goes; if no setting reaches it, the gripper cannot hold it (too_thin).
+        Decisions use the raw ray value, also where it overshoots a fixed jaw (150 mm, or the distance to the object):
+        the checked picks and refusals rest on it. Only the too_big text reports the real opening."""
         self.open_ctrl = np.atleast_1d(self.robot.gripper_open).astype(float)
         self.close_ctrl = np.atleast_1d(self.robot.gripper_closed).astype(float)
         if self._gripper_sides() is None:
             return None
         lo, hi = self.model.actuator_ctrlrange[self.gripper_ids[0]]
-        if self.gripper_gap(float(self.close_ctrl[0])) >= width:
-            shut = {float(c): self.gripper_gap(c) for c in np.linspace(lo, hi, 25)}
+        if self.gripper_gap(float(self.close_ctrl[0]), raw_ray=True) >= width:
+            shut = {float(c): self.gripper_gap(c, raw_ray=True) for c in np.linspace(lo, hi, 25)}
             tightest = min(shut, key=shut.get)
             if shut[tightest] >= width:
                 self.too_thin = (f"the gripper closes only to {shut[tightest] * 1000:.0f} mm, "
@@ -753,11 +767,11 @@ class Scene:
                 self.close_ctrl = np.array([tightest])
         need = width + clearance
         configured = float(self.open_ctrl[0])
-        if self.gripper_gap(configured) >= need:
+        if self.gripper_gap(configured, raw_ray=True) >= need:
             return configured
-        gaps = {float(c): self.gripper_gap(c) for c in np.linspace(lo, hi, 25)}
-        widest = max(gaps.values())
-        if widest < width:
+        gaps = {float(c): self.gripper_gap(c, raw_ray=True) for c in np.linspace(lo, hi, 25)}
+        if max(gaps.values()) < width:
+            widest = max(self.gripper_gap(c) for c in gaps)
             self.too_small = (f"the gripper opens at most {widest * 1000:.0f} mm, "
                               f"the {self.objs['held']} is {width * 1000:.0f} mm wide")
         wide = [c for c, g in gaps.items() if g >= need]

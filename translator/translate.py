@@ -95,10 +95,10 @@ def translate(card, scene: Scene, seen, check=None):
     return next(wps for wps, miss in zip(plans, misses) if miss < best + 0.002)
 
 
-def hold_depth(scene: Scene, held_half):
+def hold_depth(scene: Scene, held_half, table_gap=0.003):
     """How far below the object's centre the grip point goes: the practised depth, but never so deep that
-    the fingertips touch the table (3 mm to spare). For a handle: the door instead of the table."""
-    return min(scene.grip_depth, held_half - scene.tip_reach - 0.003)
+    the fingertips touch the table (`table_gap` to spare). For a handle: the door instead of the table."""
+    return min(scene.grip_depth, held_half - scene.tip_reach - table_gap)
 
 
 def _to_site(scene: Scene, wps, depth, width):
@@ -195,4 +195,5 @@ def _waypoints(card, scene: Scene, seen, rot):
             wps.append(Waypoint("retreat", last + [0, 0, step["height"]], rot, False, speed=0.5))
         else:
             raise ValueError(f"unknown step {do!r}")
-    return _to_site(scene, wps, hold_depth(scene, held_half), grip.get("width", held["size"][0]))
+    depth = hold_depth(scene, held_half, grip.get("table_gap", 0.003))
+    return _to_site(scene, wps, depth, grip.get("width", held["size"][0]))
