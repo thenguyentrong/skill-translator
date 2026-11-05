@@ -32,7 +32,7 @@ RUN_TIMEOUT = 30 * 60
 ORIGINS = ["https://thenguyentrong.github.io", "http://127.0.0.1:8123"]
 FIELDS = ("state", "error", "stages", "card", "evidence", "check", "created")
 ID = re.compile(r"[0-9a-f]{32}")
-CLIP = re.compile(r"[a-z0-9_]+\.mp4")
+CLIP = re.compile(r"[a-z0-9_]+\.(mp4|json)")
 
 
 class Budget:
@@ -139,6 +139,8 @@ def make_api(store, root, ingest, run_robot, commit=lambda: None, reload=lambda:
                 run.update(state="failed", error="This took too long and was stopped.")
             if run.get("clip"):
                 run["clip_url"] = f"/jobs/{job}/files/{run['clip']}"
+            if run.get("log"):
+                run["log_url"] = f"/jobs/{job}/files/{run['log']}"
             runs[robot] = run
         out["runs"] = runs
         out["overlay_url"] = f"/jobs/{job}/files/{state['overlay']}" if state.get("overlay") else None
@@ -207,7 +209,7 @@ def make_api(store, root, ingest, run_robot, commit=lambda: None, reload=lambda:
     @app.get("/jobs/{job}/files/{name}")
     def file(job: str, name: str):
         state = load(job)
-        names = {state.get("overlay")} | {r.get("clip") for r in runs_of(job, state).values()}
+        names = {state.get("overlay")} | {r.get(k) for r in runs_of(job, state).values() for k in ("clip", "log")}
         if not CLIP.fullmatch(name) or name not in names:
             raise HTTPException(404, "no such file")
         path = root / job / name
@@ -218,6 +220,6 @@ def make_api(store, root, ingest, run_robot, commit=lambda: None, reload=lambda:
                 pass
         if not path.is_file():
             raise HTTPException(404, "no such file")
-        return FileResponse(path, media_type="video/mp4")
+        return FileResponse(path, media_type="video/mp4" if name.endswith(".mp4") else "application/json")
 
     return app

@@ -57,9 +57,15 @@ def make_card(clip, out, save):
 
 
 def try_one(card, robot, out, trials):
-    """Returns the score ('4/5') or why the robot could not start, and the name of the first try's clip."""
+    """Returns the score ('4/5') or why the robot could not start, the first try's clip, and its state at every tick."""
     from run_job import try_robot
     card = {**card, "name": re.sub(r"[^a-z0-9_]+", "_", card["name"].lower())[:60] or "job"}  # used in a file name
-    result = try_robot(robot, card, out, trials)
+    keep = {}
+    result = try_robot(robot, card, out, trials, keep=keep)
     clip = next(iter(sorted(out.glob(f"{robot}_trial0_*.mp4"))), None)
-    return {"result": result, "clip": clip.name if clip else None}
+    log = None
+    if keep:
+        log = f"{robot}_run.json"
+        keep["qpos"] = [[round(float(v), 4) for v in q] for q in keep["qpos"]]
+        (out / log).write_text(json.dumps({"robot": robot, "fps": 25, **keep}, separators=(",", ":")))
+    return {"result": result, "clip": clip.name if clip else None, "log": log}

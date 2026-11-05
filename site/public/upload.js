@@ -175,11 +175,12 @@ export function uploadPanel(cardView) {
       const card = el("div", "yours-card");
       left.append(film, card);
       const tries = out.querySelector(".yours-tries") ?? el("div", "yours-tries");
-      const watch = out.querySelector(".yours-watch") ?? (s.check && s.state === "ready" ? watchPanel(s.card, s.check, NAMES) : null);
+      const watch = out.querySelector(".yours-watch") ?? (s.check && s.state === "ready" ? watchPanel(s.card, s.check, NAMES, API) : null);
       out.replaceChildren(left, el("div", "verdicts answers yours-robots"), tries, ...(watch ? [watch] : []));
       if (s.card) card.append(cardView({ goal: s.card.goal, kind: s.card.kind ?? "pick_place", objects: Object.keys(s.card.objects ?? {}), steps: (s.card.steps ?? []).map((x) => x.do), needs: s.card.needs }));
       if (s.check) robots(s, out.querySelector(".yours-robots"));
     }
+    out.querySelector(".yours-watch")?.setRuns(s.runs);
     if (s.overlay_url) showVideo(out.querySelector(".yours-film"), "film", s.overlay_url, "Your video with SAM 3.1's boxes around the objects and the hand.");
     const tries = out.querySelector(".yours-tries");
     for (const [robot, run] of Object.entries(s.runs)) {

@@ -34,6 +34,8 @@ def export(name, card_path="cards/cube_to_bowl.json"):
     m = s.model
     spec = captured["spec"]
     spec.compiler.discardvisual = True
+    for mat in spec.materials:  # some robots' own files bring a floor material
+        mat.textures = [""] * len(mat.textures)
     for t in list(spec.textures):  # the skybox alone is 9 MB
         spec.delete(t)
     if name in NO_COLLISION:

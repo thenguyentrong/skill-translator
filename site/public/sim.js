@@ -101,6 +101,7 @@ export class LiveRobot {
     this.word = "cube";
     this.into = "bowl";
     this.homeCard = meta.card;
+    this.humanoid = m.nu > this.acts.length + this.gripActs.length;
     this.setDepth();
     this.resetCounters();
     this.reset();
@@ -228,6 +229,9 @@ export class LiveRobot {
     this.placeCube(l.cube, l.yaw);
     this.qt = this.qadr.map((a) => d.qpos[a]);
     this.acts.forEach((a, i) => (d.ctrl[a] = this.qt[i]));
+    for (let a = 0; a < m.nu; a++) {  // a humanoid's other joints hold their pose
+      if (!this.acts.includes(a) && !this.gripActs.includes(a)) d.ctrl[a] = d.qpos[m.jnt_qposadr[m.actuator_trnid[2 * a]]];
+    }
     this.grip = 0;
     this.setGrip(0);
     mj.mj_forward(m, d);

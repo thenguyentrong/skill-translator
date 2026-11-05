@@ -115,8 +115,12 @@ def test_files():
     job = "c" * 32
     ready(store, job, {"ur5e": "can try"})
     (tmp / job).mkdir()
-    for n in ("tracks_overlay.mp4", "clip.mp4", "upload"):
+    for n in ("tracks_overlay.mp4", "clip.mp4", "upload", "ur5e_run.json", "secret.json"):
         (tmp / job / n).write_bytes(b"data")
+    store[f"run:{job}:ur5e"] = {"state": "done", "queued": time.time(), "log": "ur5e_run.json"}
+    assert c.get(f"/jobs/{job}").json()["runs"]["ur5e"]["log_url"].endswith("ur5e_run.json")
+    assert c.get(f"/jobs/{job}/files/ur5e_run.json").status_code == 200
+    assert c.get(f"/jobs/{job}/files/secret.json").status_code == 404, "only files the job lists"
     assert c.get(f"/jobs/{job}/files/tracks_overlay.mp4").status_code == 200
     assert c.get(f"/jobs/{job}/files/clip.mp4").status_code == 404, "only files the job lists"
     assert c.get(f"/jobs/{job}/files/upload").status_code == 404

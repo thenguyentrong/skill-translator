@@ -28,6 +28,8 @@ Rule for the Menagerie: "XML and asset files in each individual model directory 
 | Booster T1 | MuJoCo Menagerie | Apache-2.0 (`mujoco_menagerie/booster_t1/LICENSE`) | Tried, named in the README, not added. No images | Yes / Yes | Credit Menagerie. |
 | Kinova Gen3, UR10e, Sawyer, RB-Y1 | MuJoCo Menagerie | Gen3, UR10e: BSD-3-Clause. Sawyer, RB-Y1: Apache-2.0 (each model's `LICENSE`) | Downloaded only, not used and not shown | Not needed | None. |
 
+The site's Watch it run view also ships reduced meshes of the FR3, Lite6, G1, SO-101, TienKung 3 and Oli, loaded only when someone picks that robot. Each licence is in `site/public/licenses/` and linked in the site footer.
+
 To add another robot to the live page: copy its `LICENSE` to `site/public/licenses/` first, and for Apache models add a line saying the meshes were reduced.
 
 ## Videos (Pexels)

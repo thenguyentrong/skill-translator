@@ -19,6 +19,7 @@ const lowEnd = /Mobi|Android/i.test(navigator.userAgent) || (navigator.hardwareC
 if (lowEnd) quality = { pixelRatio: Math.min(devicePixelRatio, 1.25), shadows: 1024 };
 let lastInteraction = -1e9, doneSince = null;
 let watching = null;  // the card of an uploaded job while the engine runs it in the watch panel
+let replay = null;  // a recorded run from the cloud: { qpos, labels, fps, t, playing }
 let opened;
 const ready = new Promise((r) => (opened = r));
 const TINT = { yellow: 0xf2b705, red: 0xd8412f, orange: 0xe8862a, brown: 0x8a5a33, tan: 0xd2a56d, green: 0x3f9a5a, sage_green: 0x8fae8b, black: 0x2a2c30, white: 0xe9ecef, grey: 0x9aa3ab, gray: 0x9aa3ab, blue: 0x3f7fd0 };
@@ -257,7 +258,7 @@ function resize() {
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   const wide = w > 900 && !watching;
-  camera.fov = wide ? 25 : 30;
+  camera.fov = wide ? 25 : robot?.humanoid ? 36 : 30;
   if (wide) camera.setViewOffset(w, h, -w * 0.17, -h * 0.02, w, h);
   else camera.clearViewOffset();
   camera.updateProjectionMatrix();
@@ -347,7 +348,8 @@ function frame(now) {
   prev = now;
   watchFrames(ms);
   if (!robot) return;
-  robot.stepPhysics(Math.round((ms / 1000) / robot.m.opt.timestep));
+  if (replay) showRecorded(ms);
+  else robot.stepPhysics(Math.round((ms / 1000) / robot.m.opt.timestep));
   const st = robot.step;
   if (st === "done" && !robot.drag) {
     doneSince ??= now;
@@ -394,6 +396,19 @@ async function loadInto(name) {
   $("#stage-wrap").classList.remove("loading");
 }
 
+// A recorded run: no physics here, the joints go where they went in the cloud and MuJoCo works out the body poses.
+function showRecorded(ms) {
+  const r = replay;
+  if (r.playing) r.t = Math.min(r.t + ms / 1000, (r.qpos.length - 1) / r.fps);
+  const i = Math.round(r.t * r.fps), q = r.qpos[i];
+  robot.d.qpos.set(q);
+  mj.mj_kinematics(robot.m, robot.d);
+  const label = r.labels[Math.max(0, i - 1)] ?? "settle";
+  robot.step = label === "settle" ? "done" : label;
+  robot.grip = r.grip[i];
+  if (i >= r.qpos.length - 1) r.playing = false;
+}
+
 function showJob(card) {
   robot.setJob(card);
   drawObjects(robot.meta);
@@ -405,20 +420,41 @@ function showJob(card) {
 // The one engine on the page: it leaves the header to run an uploaded job in the watch panel, and comes back.
 export const engine = {
   ready,
-  async open(host, name, card) {
+  async open(host, name, card, run = null) {
     await ready;
     watching = card;
+    replay = null;
     host.append($("#stage-wrap"));
     if (robot.meta.name === name) showJob(card);
     else await loadInto(name);
+    if (run) {
+      robot.placeBowl(run.bowl);
+      let g = 0;
+      const grip = run.qpos.map((_, i) => {
+        const l = run.labels[i - 1];
+        if (l === "close") g = Math.min(1, g + 0.1);
+        if (l === "open" || l === "retreat") g = Math.max(0, g - 0.1);
+        return g;
+      });
+      replay = { qpos: run.qpos, labels: run.labels, fps: run.fps, t: 0, playing: true, grip };
+    }
     resize();
   },
-  close() {
+  async close() {
     if (!watching) return;
     watching = null;
+    replay = null;
     $(".hero").insertBefore($("#stage-wrap"), $(".hud"));
-    showJob(robot.homeCard);
+    const home = document.querySelector('[data-load][aria-pressed="true"]')?.dataset.load ?? "ur5e";
+    if (robot.meta.name === home) showJob(robot.homeCard);
+    else await loadInto(home);
     resize();
+  },
+  playback: () => (replay ? { t: replay.t, end: (replay.qpos.length - 1) / replay.fps, playing: replay.playing } : null),
+  seek(t) { replay.t = t; replay.playing = false; },
+  toggle() {
+    if (replay.t >= (replay.qpos.length - 1) / replay.fps) replay.t = 0;
+    replay.playing = !replay.playing;
   },
   state: () => robot?.state(),
   log: () => robot?.log ?? [],

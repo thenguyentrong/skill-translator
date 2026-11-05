@@ -6,7 +6,7 @@ const base = new URL('../public/', import.meta.url), cards = new URL('../../card
 const n = +(process.argv[2] || 5);
 const mj = await loadMujoco();
 const jobs = readdirSync(cards).map((f) => JSON.parse(readFileSync(new URL(f, cards)))).filter((c) => (c.kind ?? 'pick_place') === 'pick_place');
-for (const name of ['ur5e', 'panda', 'xarm7']) {
+for (const name of (process.argv[3]?.split(',') ?? ['ur5e', 'panda', 'xarm7'])) {
   const { model, meta } = await loadRobot(mj, name, (p) => readFileSync(new URL(p, base)), (p) => JSON.parse(readFileSync(new URL(p, base))));
   const r = new LiveRobot(mj, model, meta);
   let seed = 7; const rng = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;

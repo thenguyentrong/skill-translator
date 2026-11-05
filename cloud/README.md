@@ -17,3 +17,5 @@ bash cloud/deploy.sh      # sends the Meta key to Modal, deploys
 Anyone can use it until a budget runs out. `BUDGET_USD` in `api.py` has one per service: $140 of the Meta credit and $25 of Modal. Every video promises $0.35 Meta and $0.05 Modal, every robot $0.20 Modal, before it starts. That is the worst case, so the real bill stays below the budget. The promises are saved in `budget.json` on the volume. When the next job does not fit, it is refused, for good: to open it again, raise the number and deploy.
 
 Other limits: 5 videos an hour per address, 3 robots per video, 60 MB, 15 s. A job's id is random, so results can only be opened with its link. Results are deleted after 24 hours and the video as soon as the card is done. Training is not on this path.
+
+Each robot's first try also saves its joint state at every tick (`<robot>_run.json`). The site plays that back in the browser engine, so any picked robot can be watched step by step. UR5e, Panda and xArm7 also run live in the browser; humanoid arms need the self-avoidance in the Python IK, so they replay. Pick and place only so far.

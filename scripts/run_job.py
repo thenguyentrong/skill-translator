@@ -84,9 +84,9 @@ def check(robot, card, seed=0):
     return "can try"
 
 
-def try_robot(robot, card, out, trials=5, seed=0, stage=lambda *a, **k: None):
+def try_robot(robot, card, out, trials=5, seed=0, stage=lambda *a, **k: None, keep=None):
     """Practise the grip, then `trials` tries with the robot's cameras; the first try's clip goes to `out`.
-    Returns 'ok/trials', or why the robot cannot do it."""
+    Returns 'ok/trials', or why the robot cannot do it. `keep` (a dict) gets the first try's state at every tick."""
     t0 = time.time()
     scene = build(robot, card)
     if scene.refusal:
@@ -110,10 +110,14 @@ def try_robot(robot, card, out, trials=5, seed=0, stage=lambda *a, **k: None):
         seen = eyes.find(card)
         if any(v is None for v in seen.values()):
             continue
-        res = run_skill(scene, card, seen)
+        labels = []
+        res = run_skill(scene, card, seen, on_tick=labels.append)
         ok += res.success
         if i == 0:
             save_video(scene, res.history, out / f"{robot}_trial0_{res.reason}.mp4")
+            if keep is not None:
+                keep.update(qpos=res.history, labels=labels, bowl=scene.model.body_pos[scene.bowl_id].tolist(),
+                            success=bool(res.success), reason=res.reason, seen={k: np.round(v["pos"], 3).tolist() for k, v in seen.items() if v})
     eyes.close()
     stage(f"{robot}: practise the grip, translate + check, {trials} trials", t0, 0.0, success=f"{ok}/{trials}",
           grip_depth_mm=round(practice["grip_depth"] * 1000), kind="repeat")
