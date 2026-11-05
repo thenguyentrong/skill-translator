@@ -1,5 +1,5 @@
 // "Try your own video": talks to the Modal API in cloud/. No keys here: the visitor types the access code.
-const API = "https://thenguyentrong--translator-api.modal.run";
+const API = "https://gokuvietsub1--translator-api.us-east.modal.run";
 const NAMES = { ur5e: "UR5e", panda: "Franka Panda", fr3: "Franka FR3", xarm7: "xArm7", lite6: "Lite6", so101: "SO-101", g1: "Unitree G1", tienkung3: "TienKung 3", oli: "LimX Oli" };
 const MAX_ROBOTS = 3;
 const WORDS = { queued: "Preparing the video", reading: "Meta AI is reading the video", checking: "Each robot is checking the job" };
