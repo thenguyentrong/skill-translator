@@ -2,7 +2,7 @@
 
 Nothing is written on these videos, so add your own text in the editor. All 1920x1080, 25 fps, no sound.
 
-- `snippets/`: short pieces, cut at the real moments (grab, hit, drop). Start here.
+- `snippets/`: short pieces. Single robots and the stick clips are cut at the real moments (grab, hit, drop); grids, doors and carry are even thirds. Start here.
 - `full/`: the whole clip each snippet comes from.
 - `screens/`: pictures of the web app and the results table. Their words are part of the app.
 - `snippets_overview.png`: one picture of every snippet with its file name.
