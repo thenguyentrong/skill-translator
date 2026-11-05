@@ -1,5 +1,6 @@
 // The static part of the page, built from data/site.json and data/facts.json (saved results only).
 import { answer } from "./check.js";
+import { uploadPanel } from "./upload.js";
 
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -243,7 +244,7 @@ async function build() {
   const ok = tally.reduce((a, v) => a + v[0], 0), all = tally.reduce((a, v) => a + v[1], 0);
   mess.append(el("h2", "", "It knows the goal, so you can mess with it."));
   mess.append(el("p", "lede", `The robot at the top reads the card 25 times a second. In scripted tests on ${Object.keys(live).length} arms, with the same card and the same code, it finished ${ok} of ${all} runs after the cube was moved mid-reach, taken away mid-descent, knocked out of the gripper, or pulled out of the bowl. A replayed motion cannot do that.`));
-  main.append(checkPanel(facts), mess, jobs, mx, pol, how, lim, foot);
+  main.append(checkPanel(facts), uploadPanel(cardView), mess, jobs, mx, pol, how, lim, foot);
   lazyVideos();
 }
 build();

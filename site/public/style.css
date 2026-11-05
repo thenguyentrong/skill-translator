@@ -147,3 +147,22 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 24px; ma
 @media (max-width: 899px) {
   .check-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* try your own video */
+.top-links { display: flex; gap: 18px; flex-wrap: wrap; justify-content: flex-end; }
+.yours { scroll-margin-top: 24px; }
+.yours input[type="password"], .yours input[type="file"] { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; width: 100%; min-width: 0; }
+.yours form .primary, .yours-robots .primary { justify-self: start; border: 0; border-radius: var(--r); padding: 12px 20px; font-weight: 600; transition: transform 0.12s; }
+.yours .primary:active { transform: translateY(1px) scale(0.98); }
+.yours .primary:disabled { opacity: 0.5; cursor: default; }
+.said { min-height: 1.6em; font-weight: 500; }
+.yours-out { display: grid; gap: 22px; min-width: 0; align-content: start; }
+.yours-out:empty { display: none; }
+.yours-film:empty, .yours-card:empty, .yours-robots:empty, .yours-tries:empty { display: none; }
+.yours-robots { display: grid; gap: 14px; }
+.robot-pick { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.robot-pick input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+.yours-tries { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+.yours-tries figure { margin: 0; display: grid; gap: 8px; align-content: start; }
+.yours-tries figcaption { display: grid; gap: 2px; font-size: 0.95rem; }
+.yours-tries figcaption span { color: var(--muted); }

@@ -5,6 +5,7 @@ the SO-101 has one fixed jaw, a lemon rolls where a cube sits. So the robot trie
 layouts (seeds far away from the test seeds) and keeps the depth that holds most often. Done once per robot and skill.
 """
 import json
+import os
 import time
 from multiprocessing import Pool
 
@@ -30,7 +31,7 @@ def _try(job):
         return depth, f"error: {e}"[:300]
 
 
-def practice(robot, card, depths=None, n=None, workers=30, save=True):
+def practice(robot, card, depths=None, n=None, workers=int(os.environ.get("PRACTICE_WORKERS", 30)), save=True):
     """Returns {"grip_depth": best, "tries": {depth: {reason: count}}, ...} and saves it for build()."""
     t0 = time.time()
     carry = card.get("kind") == "carry"
