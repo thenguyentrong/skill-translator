@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Translator: film a job, nine robots say yes, no and why</title>
+<title>Translator: film a job, see which robots can do it</title>
 <meta name="description" content="Meta AI turns a short video into a robot skill. Each robot checks it against its own body, then tries it in simulation.">
 <link rel="preload" href="fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
@@ -13,12 +13,16 @@
 <header class="hero">
   <nav class="top">
     <a class="brand" href="#top">Translator</a>
-    <span class="top-links"><a class="ghost-link" href="#yours">Try your own video</a> <a class="ghost-link" href="https://github.com/thenguyentrong/skill-translator">Code on GitHub</a></span>
+    <span class="top-links"><a class="ghost-link" href="#about">How it works</a> <a class="ghost-link" href="#check">Check a job</a> <a class="ghost-link" href="https://github.com/thenguyentrong/skill-translator">Code on GitHub</a></span>
   </nav>
   <div class="hero-copy" id="top">
-    <h1>Film a job. Nine robots say yes, no and why.</h1>
-    <p>Meta AI reads a short video. Each robot checks the job against its own body, in simulation.</p>
-    <a class="cta" href="#check">Check a job</a>
+    <h1>Film a job. See which robots can do it.</h1>
+    <p>Upload a short video. Meta AI reads it, nine robots answer, and up to three try it in simulation.</p>
+    <label class="hero-drop">
+      <input id="hero-file" class="sr" type="file" accept="video/*">
+      <strong>Upload a video</strong>
+      <span id="hero-hint">or drop it anywhere on this page</span>
+    </label>
   </div>
   <div id="stage-wrap" class="loading">
     <canvas id="stage" aria-label="A robot arm picks a yellow cube from a table and puts it in a white bowl. Drag the cube to disturb it."></canvas>

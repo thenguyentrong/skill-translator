@@ -4,6 +4,8 @@
 export const STEPS = ["reach", "descend", "close", "lift", "carry", "lower", "open", "retreat", "done"];
 
 const PHYS_PER_TICK = 20;
+const SHAPE = { sphere: 2, cylinder: 5, box: 6 };
+const DENSITY = 900;
 const GRIP_TIME = 0.4;
 const MAX_JOINT_SPEED = 1.5;
 const SPEED = { reach: 0.42, descend: 0.16, lift: 0.22, carry: 0.42, lower: 0.16, retreat: 0.24, done: 0.2, wait: 0.2 };
@@ -96,10 +98,74 @@ export class LiveRobot {
     this.tiltDown = [0, 0, -1];
     this.card = meta.card;
     this.height = Object.fromEntries(this.card.steps.filter((s) => s.height).map((s) => [s.do, s.height]));
-    const [sa, ia] = axis(meta.approach);
-    const depth = Math.min(meta.grip_depth, meta.held_half - meta.tip_reach - 0.003);
-    this.offset = meta.grip_offset.slice();
+    this.word = "cube";
+    this.into = "bowl";
+    this.homeCard = meta.card;
+    this.setDepth();
+    this.resetCounters();
+    this.reset();
+  }
+
+  setDepth() {
+    const [sa, ia] = axis(this.meta.approach);
+    const depth = Math.min(this.meta.grip_depth, this.meta.held_half - this.meta.tip_reach - 0.003);
+    this.offset = this.meta.grip_offset.slice();
     this.offset[ia] -= sa * depth;
+  }
+
+  // Puts this card's objects into the compiled scene. MuJoCo reads these arrays at every step, so no new model is needed.
+  // A square bin stays a ring here: the browser scene has one kind of container.
+  setJob(card) {
+    const { m, mj } = this;
+    const name = card.grip.object, h = card.objects[name];
+    const into = card.success?.container ?? Object.keys(card.objects).find((k) => k !== name), c = card.objects[into];
+    const [sx, sy, sz] = h.size, b = this.cube, g = m.body_geomadr[b];
+    const r = sx / 2;
+    const size = h.shape === "sphere" ? [r, 0, 0] : h.shape === "cylinder" ? [r, sz / 2, 0] : [sx / 2, sy / 2, sz / 2];
+    const volume = h.shape === "sphere" ? (Math.PI / 6) * sx ** 3 : h.shape === "cylinder" ? (Math.PI / 4) * sx ** 2 * sz : sx * sy * sz;
+    const mass = card.needs?.mass_kg || Math.max(0.02, DENSITY * volume);
+    m.geom_type[g] = SHAPE[h.shape] ?? 6;
+    const reach = h.shape === "sphere" ? r : h.shape === "cylinder" ? Math.hypot(r, sz / 2) : Math.hypot(sx, sy, sz) / 2;
+    size.forEach((v, i) => (m.geom_size[3 * g + i] = v));
+    m.geom_rbound[g] = reach;
+    const box = (i, half) => { for (let k = 0; k < 3; k++) { m.geom_aabb[6 * i + k] = 0; m.geom_aabb[6 * i + 3 + k] = half[k]; } };
+    box(g, h.shape === "box" ? size : [reach, reach, reach]);
+    m.body_mass[b] = mass;
+    const I = h.shape === "sphere" ? [0.4 * mass * r * r, 0.4 * mass * r * r, 0.4 * mass * r * r]
+      : h.shape === "cylinder" ? [mass * (3 * r * r + sz * sz) / 12, mass * (3 * r * r + sz * sz) / 12, 0.5 * mass * r * r]
+        : [mass * (sy * sy + sz * sz) / 12, mass * (sx * sx + sz * sz) / 12, mass * (sx * sx + sy * sy) / 12];
+    I.forEach((v, i) => (m.body_inertia[3 * b + i] = v));
+
+    const radius = c.inner_radius, wall = c.wall_height, bowl = this.bowl, first = m.body_geomadr[bowl], n = m.body_geomnum[bowl] - 1;
+    m.geom_size[3 * first] = radius + 0.005;
+    m.geom_rbound[first] = radius + 0.006;
+    box(first, [radius + 0.005, radius + 0.005, 0.003]);
+    const half = (radius + 0.005) * Math.tan(Math.PI / n);
+    for (let i = 0; i < n; i++) {
+      const k = first + 1 + i, a = (2 * Math.PI * i) / n;
+      m.geom_pos[3 * k] = (radius + 0.003) * Math.cos(a);
+      m.geom_pos[3 * k + 1] = (radius + 0.003) * Math.sin(a);
+      m.geom_pos[3 * k + 2] = wall / 2;
+      m.geom_size[3 * k + 1] = half;
+      m.geom_size[3 * k + 2] = wall / 2;
+      m.geom_rbound[k] = Math.hypot(0.003, half, wall / 2);
+      box(k, [Math.hypot(0.003, half), Math.hypot(0.003, half), wall / 2]);
+    }
+    for (const body of [b, bowl]) {  // bounding boxes a little too big only cost time
+      const wide = body === b ? reach : radius + 0.02 + wall;
+      for (let i = m.body_bvhadr[body], end = i + m.body_bvhnum[body]; i < end; i++) {
+        for (let k = 0; k < 3; k++) { m.bvh_aabb[6 * i + k] = 0; m.bvh_aabb[6 * i + 3 + k] = wide; }
+      }
+    }
+    mj.mj_setConst(m, this.d);
+    this.meta = { ...this.meta, held_half: sz / 2, held_width: card.grip.width ?? sx, bowl_radius: radius, bowl_wall: wall, card };
+    this.card = card;
+    this.height = Object.fromEntries(card.steps.filter((x) => x.height).map((x) => [x.do, x.height]));
+    this.round = h.shape !== "box";
+    this.narrow = h.shape === "box" && Math.abs(sx - sy) > 0.002 ? (sx < sy ? 0 : Math.PI / 2) : null;
+    this.word = name.replace(/_/g, " ");
+    this.into = into.replace(/_/g, " ");
+    this.setDepth();
     this.resetCounters();
     this.reset();
   }
@@ -221,6 +287,7 @@ export class LiveRobot {
 
   // the cube's turn about the vertical, from whichever face ended up on top
   cubeYaw() {
+    if (this.round) return 0;
     const x = this.d.xmat, s = 9 * this.cube;
     const R = [0, 1, 2].map((c) => [x[s + c], x[s + 3 + c], x[s + 6 + c]]);
     const up = R.reduce((b, a, i) => (Math.abs(a[2]) > Math.abs(R[b][2]) ? i : b), 0);
@@ -256,8 +323,9 @@ export class LiveRobot {
   // of the four grips on a cube, the one that needs the least wrist turn
   gripRotation(yaw) {
     let best = null, bestT = -9;
-    for (let k = 0; k < 4; k++) {
-      const r = this.rotation(yaw + (k * Math.PI) / 2);
+    const base = yaw + (this.narrow ?? 0), step = this.narrow === null || this.narrow === undefined ? 1 : 2;
+    for (let k = 0; k < 4; k += step) {
+      const r = this.rotation(base + (k * Math.PI) / 2);
       const t = r.reduce((sum, v, i) => sum + v * this.Rt[i], 0);
       if (t > bestT) (best = r), (bestT = t);
     }
@@ -296,15 +364,15 @@ export class LiveRobot {
     const dt = (PHYS_PER_TICK * this.m.opt.timestep);
     const c = this.cubePos(), h = this.handPos(), meta = this.meta;
     const top = meta.table_top, hh = meta.held_half;
-    const onCube = norm(sub(c, this.toSiteCenter(h))) < 0.032;
+    const onCube = norm(sub(c, this.toSiteCenter(h))) < Math.max(0.032, 0.75 * hh + 0.02);
     this.timer += dt;
-    const graspZ = Math.max(c[2], top + hh);
+    const graspZ = Math.max(c[2], top + hh, top + meta.tip_reach + 0.003);
     const hover = top + hh + 0.1;
     const moved = this.lastAim ? Math.hypot(c[0] - this.lastAim[0], c[1] - this.lastAim[1]) : 0;
     let goal = this.goal, R = this.Rt, speed = SPEED[this.step] ?? 0.3;
 
     if (c[2] < top - 0.04) {
-      this.note = "The cube fell off the table. A new one is placed.";
+      this.note = `The ${this.word} fell off the table. A new one is placed.`;
       const l = this.layout();
       this.placeCube(l.cube, l.yaw);
       this.goStep("reach");
@@ -319,13 +387,13 @@ export class LiveRobot {
           break;
         }
         const can = this.reachable(c);
-        this.note = can ? (this.d.time - this.lostAt < 1.5 ? this.note : "") : "The cube is out of my reach.";
+        this.note = can ? (this.d.time - this.lostAt < 1.5 ? this.note : "") : `The ${this.word} is out of my reach.`;
         this.outFor = can || this.drag ? 0 : (this.outFor ?? 0) + dt;
         if (this.outFor > 3.5) {
           const l = this.layout();
           this.placeCube(l.cube, l.yaw);
           this.outFor = 0;
-          this.note = "Out of reach for too long. A new cube is placed.";
+          this.note = `Out of reach for too long. A new ${this.word} is placed.`;
           this.lostAt = this.d.time;
         }
         R = this.gripRotation(this.cubeYaw());
@@ -349,7 +417,7 @@ export class LiveRobot {
         R = this.gripRotation(this.cubeYaw());
         goal = this.toSite([c[0], c[1], graspZ], R);
         if (moved > 0.015 || this.drag || this.cubeSpeed() > 0.1) {
-          this.recover("The cube moved. Aiming again.");
+          this.recover(`The ${this.word} moved. Aiming again.`);
           break;
         }
         if (this.timer > 3) {
@@ -363,12 +431,12 @@ export class LiveRobot {
         goal = this.pt;
         this.grip = Math.min(1, this.grip + dt / GRIP_TIME);
         if (moved > 0.02 && this.grip < 0.5) {
-          this.recover("The cube moved. Aiming again.");
+          this.recover(`The ${this.word} moved. Aiming again.`);
           break;
         }
         if (this.grip >= 1 && this.timer > GRIP_TIME + 0.3) {
           if (onCube) this.goStep("lift");
-          else this.recover("Missed the cube. Trying again.");
+          else this.recover(`Missed the ${this.word}. Trying again.`);
         }
         break;
       }
@@ -376,7 +444,7 @@ export class LiveRobot {
       case "carry":
       case "lower": {
         if (!onCube) {
-          this.recover("I lost the cube. Going back for it.");
+          this.recover(`I lost the ${this.word}. Going back for it.`);
           break;
         }
         const b = this.bowlPos();
@@ -392,7 +460,7 @@ export class LiveRobot {
           this.carryTime = this.timer > 0.05 ? (this.carryTime ?? 0) + dt : 0;
           if (this.carryTime > 7) {
             this.grip = 0;
-            this.recover("I could not get above the bowl. Trying again.");
+            this.recover(`I could not get above the ${this.into}. Trying again.`);
             break;
           }
           if (norm(sub(goal, this.pt)) > 0.004 || norm(sub(goal, h)) > 0.012) this.settled = 0;
@@ -421,7 +489,7 @@ export class LiveRobot {
             this.taskTime = this.d.time - this.startTime;
             this.goStep("done");
           } else if (this.timer > 1.2) {
-            this.recover("The cube is not in the bowl yet.");
+            this.recover(`The ${this.word} is not in the ${this.into} yet.`);
           }
         }
         break;
@@ -429,7 +497,7 @@ export class LiveRobot {
       case "done": {
         goal = this.pt;
         if (!this.cubeInBowl() && this.timer > 0.2) {
-          if (this.drag || this.cubeSpeed() < 0.3) this.recover("The cube left the bowl. Going back for it.");
+          if (this.drag || this.cubeSpeed() < 0.3) this.recover(`The ${this.word} left the ${this.into}. Going back for it.`);
         } else if (this.cubeInBowl()) {
           this.timer = 0.21;
         }

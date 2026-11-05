@@ -1,5 +1,6 @@
 // The static part of the page, built from data/site.json and data/facts.json (saved results only).
 import { answer } from "./check.js";
+import { aboutPanel } from "./about.js";
 import { uploadPanel } from "./upload.js";
 
 const el = (tag, cls, text) => {
@@ -210,19 +211,6 @@ async function build() {
   side.append(t, el("p", "small", "This is a short training run, and trained policies still score below the scripted teacher. Smoothed = temporal ensembling."));
   pol.append(fig, side);
 
-  const how = el("section", "how");
-  how.append(el("h2", "", "Where Meta AI does the work"));
-  const rows = [["SAM 3.1", "Follows the objects and the hand through every frame of the video."],
-    ["Muse Spark 1.3", "Decides the kind of task, writes the skill card, writes a robot adapter from its model file, and judges failed tries against the video."],
-    ["Muse Spark Open", "Open weights on Baseten and Fireworks. Wrote the Lite6 and Franka FR3 adapters."]];
-  const list = el("div", "rows");
-  for (const [a, b] of rows) {
-    const r = el("div");
-    r.append(el("h3", "", a), el("p", "", b));
-    list.append(r);
-  }
-  how.append(list);
-
   const lim = el("section", "limits");
   lim.append(el("h2", "", "What this is not, yet"));
   const ul = el("ul");
@@ -244,7 +232,7 @@ async function build() {
   const ok = tally.reduce((a, v) => a + v[0], 0), all = tally.reduce((a, v) => a + v[1], 0);
   mess.append(el("h2", "", "It knows the goal, so you can mess with it."));
   mess.append(el("p", "lede", `The robot at the top reads the card 25 times a second. In scripted tests on ${Object.keys(live).length} arms, with the same card and the same code, it finished ${ok} of ${all} runs after the cube was moved mid-reach, taken away mid-descent, knocked out of the gripper, or pulled out of the bowl. A replayed motion cannot do that.`));
-  main.append(checkPanel(facts), uploadPanel(cardView), mess, jobs, mx, pol, how, lim, foot);
+  main.append(uploadPanel(cardView), aboutPanel(), checkPanel(facts), mess, jobs, mx, pol, lim, foot);
   lazyVideos();
 }
 build();

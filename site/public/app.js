@@ -11,13 +11,17 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const dark = () => matchMedia("(prefers-color-scheme: dark)").matches;
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-let scene, camera, renderer, controls, sun, floorMat, tableTop, ring, trail, cubeMesh, bowlGroup;
+let scene, camera, renderer, controls, sun, floorMat, tableTop, ring, trail, cubeMesh, bowlMesh, cubeGroup, bowlGroup;
 let robot = null, mj = null, bodies = new Map(), sceneRoot;
 const trailPts = [], TRAIL = 200;
 let quality = { pixelRatio: Math.min(devicePixelRatio, 2), shadows: 2048 };
 const lowEnd = /Mobi|Android/i.test(navigator.userAgent) || (navigator.hardwareConcurrency ?? 8) <= 4;
 if (lowEnd) quality = { pixelRatio: Math.min(devicePixelRatio, 1.25), shadows: 1024 };
 let lastInteraction = -1e9, doneSince = null;
+let watching = null;  // the card of an uploaded job while the engine runs it in the watch panel
+let opened;
+const ready = new Promise((r) => (opened = r));
+const TINT = { yellow: 0xf2b705, red: 0xd8412f, orange: 0xe8862a, brown: 0x8a5a33, tan: 0xd2a56d, green: 0x3f9a5a, sage_green: 0x8fae8b, black: 0x2a2c30, white: 0xe9ecef, grey: 0x9aa3ab, gray: 0x9aa3ab, blue: 0x3f7fd0 };
 
 const toThree = (v) => new THREE.Vector3(v[0], v[2], -v[1]);
 
@@ -126,19 +130,32 @@ function buildWorld(model, meta) {
     mesh.castShadow = mesh.receiveShadow = true;
     groupFor(tbl).add(mesh);
   }
-  // bowl: one smooth shell over the physics ring of boxes
-  const r = meta.bowl_radius + 0.005, w = meta.bowl_wall;
-  const pts = [[0, 0], [r - 0.004, 0], [r, 0.004], [r, w - 0.002], [r - 0.002, w], [r - 0.006, w - 0.002], [r - 0.006, 0.008], [r - 0.01, 0.006], [0, 0.006]].map(([x, y]) => new THREE.Vector2(x, y));
-  const bowlMat = new THREE.MeshStandardMaterial({ color: 0xe9ecef, roughness: 0.28, metalness: 0.02 });
-  const shell = new THREE.Mesh(new THREE.LatheGeometry(pts, 72).rotateX(Math.PI / 2), bowlMat);
-  shell.castShadow = shell.receiveShadow = true;
   bowlGroup = groupFor(m.body("bowl").id);
-  bowlGroup.add(shell);
-  // cube
-  const size = 2 * meta.held_half;
-  cubeMesh = new THREE.Mesh(new RoundedBoxGeometry(size, size, size, 3, 0.0028), new THREE.MeshStandardMaterial({ color: 0xf2b705, roughness: 0.34, metalness: 0.05, emissive: 0x3a2a00, emissiveIntensity: 0.35 }));
+  cubeGroup = groupFor(m.body("cube").id);
+  drawObjects(meta);
+}
+
+// the bowl is one smooth shell over the physics ring of boxes
+function drawObjects(meta) {
+  for (const old of [cubeMesh, bowlMesh]) {
+    old?.parent?.remove(old);
+    old?.geometry.dispose();
+    old?.material.dispose();
+  }
+  const held = meta.card.objects[meta.card.grip.object];
+  const into = meta.card.objects[meta.card.success?.container] ?? {};
+  const r = meta.bowl_radius + 0.005, w = meta.bowl_wall, lip = Math.min(0.004, w / 3);
+  const pts = [[0, 0], [r - lip, 0], [r, lip], [r, w - lip / 2], [r - lip / 2, w], [r - 0.006, w - lip / 2], [r - 0.006, Math.min(0.008, w)], [r - 0.01, Math.min(0.006, w)], [0, Math.min(0.006, w)]].map(([x, y]) => new THREE.Vector2(x, y));
+  bowlMesh = new THREE.Mesh(new THREE.LatheGeometry(pts, 72).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: TINT[into.color] ?? 0xe9ecef, roughness: 0.28, metalness: 0.02 }));
+  bowlMesh.castShadow = bowlMesh.receiveShadow = true;
+  bowlGroup.add(bowlMesh);
+  const [x, y, z] = held.size;
+  const geo = held.shape === "sphere" ? new THREE.SphereGeometry(x / 2, 32, 24)
+    : held.shape === "cylinder" ? new THREE.CylinderGeometry(x / 2, x / 2, z, 40).rotateX(Math.PI / 2)
+      : new RoundedBoxGeometry(x, y, z, 3, 0.09 * Math.min(x, y, z));
+  cubeMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: TINT[held.color] ?? 0xf2b705, roughness: 0.34, metalness: 0.05, emissive: 0x3a2a00, emissiveIntensity: 0.35 }));
   cubeMesh.castShadow = true;
-  groupFor(m.body("cube").id).add(cubeMesh);
+  cubeGroup.add(cubeMesh);
 }
 
 async function buildRobot(meta, buffer) {
@@ -239,7 +256,7 @@ function resize() {
   const wrap = $("#stage-wrap"), w = wrap.clientWidth, h = wrap.clientHeight;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
-  const wide = w > 900;
+  const wide = w > 900 && !watching;
   camera.fov = wide ? 25 : 30;
   if (wide) camera.setViewOffset(w, h, -w * 0.17, -h * 0.02, w, h);
   else camera.clearViewOffset();
@@ -334,7 +351,7 @@ function frame(now) {
   const st = robot.step;
   if (st === "done" && !robot.drag) {
     doneSince ??= now;
-    if (!reduced && now - doneSince > 3200 && now - lastInteraction > 6000) {
+    if (!watching && !reduced && now - doneSince > 3200 && now - lastInteraction > 6000) {
       robot.newLayout();
       trailPts.length = 0;
       doneSince = null;
@@ -371,20 +388,54 @@ async function loadInto(name) {
   robot = r;
   await buildRobot(meta, buffer);
   window.__robot = r;
+  if (watching) showJob(watching);
   buildHud();
   resize();
   $("#stage-wrap").classList.remove("loading");
 }
 
+function showJob(card) {
+  robot.setJob(card);
+  drawObjects(robot.meta);
+  trailPts.length = 0;
+  ring.userData.ready = false;
+  doneSince = null;
+}
+
+// The one engine on the page: it leaves the header to run an uploaded job in the watch panel, and comes back.
+export const engine = {
+  ready,
+  async open(host, name, card) {
+    await ready;
+    watching = card;
+    host.append($("#stage-wrap"));
+    if (robot.meta.name === name) showJob(card);
+    else await loadInto(name);
+    resize();
+  },
+  close() {
+    if (!watching) return;
+    watching = null;
+    $(".hero").insertBefore($("#stage-wrap"), $(".hud"));
+    showJob(robot.homeCard);
+    resize();
+  },
+  state: () => robot?.state(),
+  log: () => robot?.log ?? [],
+  knock() { robot.knock(); lastInteraction = performance.now(); },
+  again() { robot.newLayout(); trailPts.length = 0; lastInteraction = performance.now(); },
+};
+
 async function start() {
   try {
     buildStudio();
     setupPointer();
-    addEventListener("resize", resize);
+    new ResizeObserver(resize).observe($("#stage-wrap"));
     resize();
     requestAnimationFrame(frame);
     mj = await loadMujoco({ locateFile: (f) => `vendor/${f}` });
     await loadInto(document.body.dataset.robot || "ur5e");
+    opened();
     $("#knock").onclick = () => { robot.knock(); lastInteraction = performance.now(); };
     $("#layout").onclick = () => { robot.newLayout(); trailPts.length = 0; lastInteraction = performance.now(); };
     document.querySelectorAll("[data-load]").forEach((b) => (b.onclick = async () => {
