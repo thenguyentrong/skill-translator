@@ -1,0 +1,143 @@
+1
+00:00:00,000 --> 00:00:02,727
+Can this robot do my job?
+
+2
+00:00:02,727 --> 00:00:10,000
+Today you often find out after you buy it, and then you teach it from zero.
+
+3
+00:00:10,000 --> 00:00:11,846
+So I built Translator.
+
+4
+00:00:11,846 --> 00:00:14,154
+You film a job once.
+
+5
+00:00:14,154 --> 00:00:18,308
+This stock video shows a hand and a lemon.
+
+6
+00:00:18,308 --> 00:00:22,000
+SAM 3.1 tracks the objects and the hand.
+
+7
+00:00:22,000 --> 00:00:31,100
+Muse Spark watches the video and writes a skill card: the goal, the objects, the grip, the steps, the success test.
+
+8
+00:00:31,100 --> 00:00:33,267
+The meaning, not the motion.
+
+9
+00:00:33,267 --> 00:00:35,000
+56 seconds, 7 cents.
+
+10
+00:00:35,000 --> 00:00:39,632
+Here is another stock video: a box, moved with two hands.
+
+11
+00:00:39,632 --> 00:00:43,421
+Each robot checks the card against its own body.
+
+12
+00:00:43,421 --> 00:00:47,632
+The box is 146 millimetres wide, this gripper opens 85.
+
+13
+00:00:47,632 --> 00:00:51,000
+So it says no, with a measured reason.
+
+14
+00:00:51,000 --> 00:00:54,500
+For the lemon, most robots say yes.
+
+15
+00:00:54,500 --> 00:00:58,000
+Same card, each in its own way.
+
+16
+00:00:58,000 --> 00:01:07,758
+They also open a door, and the G1 carries a crate with two hands; here the base slides, the legs do not step.
+
+17
+00:01:07,758 --> 00:01:12,000
+Nine robots, eleven skills, 80 percent of 760 tries passed.
+
+18
+00:01:12,000 --> 00:01:17,833
+Because the card holds the goal, not a path, you can mess with it.
+
+19
+00:01:17,833 --> 00:01:20,750
+Here a stick knocks the cube away.
+
+20
+00:01:20,750 --> 00:01:23,250
+A replay carries on with nothing.
+
+21
+00:01:23,250 --> 00:01:27,000
+This robot looks again and goes back for it.
+
+22
+00:01:27,000 --> 00:01:35,333
+Across six robots and scripted moves and hits on the cube, it passed 372 of 420 tries; replay passed 49.
+
+23
+00:01:35,333 --> 00:01:43,250
+A simple re-plan from the card does a little better, 398, because the card is what makes recovery possible.
+
+24
+00:01:43,250 --> 00:01:47,000
+Try it in your browser, the link is below.
+
+25
+00:01:47,000 --> 00:01:50,913
+Muse reads the model file and writes the adapter.
+
+26
+00:01:50,913 --> 00:01:56,565
+If a test fails, Muse gets the numbers and frames and fixes it.
+
+27
+00:01:56,565 --> 00:02:04,391
+The Franka FR3 took 21 seconds on Muse Spark Open, and passed 10 out of 10 first try.
+
+28
+00:02:04,391 --> 00:02:07,000
+Of seven new robots, five passed.
+
+29
+00:02:07,000 --> 00:02:11,783
+SAM 3.1 can also referee a robot's clip from video alone.
+
+30
+00:02:11,783 --> 00:02:17,000
+On 40 clean simulated clips it agreed with the simulator 39 times.
+
+31
+00:02:17,000 --> 00:02:20,512
+Everything here is simulation, no real robot yet.
+
+32
+00:02:20,512 --> 00:02:28,854
+When a robot trains its own policy from cameras, it passes 38 to 74 percent, behind the planned motion.
+
+33
+00:02:28,854 --> 00:02:35,000
+Watch the UR5e learn: on the same 20 layouts, 6, 6, 13, then 15.
+
+34
+00:02:35,000 --> 00:02:41,769
+Everything here was built during this hackathon, with SAM 3.1, Muse Spark and Muse Spark Open.
+
+35
+00:02:41,769 --> 00:02:43,462
+Show a task once.
+
+36
+00:02:43,462 --> 00:02:46,000
+See which robots can do it.
