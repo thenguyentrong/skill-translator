@@ -18,7 +18,7 @@ from cloud import jobs as J
 def fresh(tmp=None):
     tmp = tmp or Path(tempfile.mkdtemp())
     store, started, tried = {}, [], []
-    client = TestClient(A.make_api(store, tmp, started.append, lambda *a: tried.append(a)), raise_server_exceptions=False)
+    client = TestClient(A.make_api(store, tmp, started.append, lambda *a: tried.append(a), live_url="wss://x"), raise_server_exceptions=False)
     return client, store, tmp, started, tried
 
 
@@ -108,6 +108,26 @@ def test_run():
     assert c.post(url, json={"robots": ["c", "d"]}).status_code == 400, "3 per video in total"
     assert len(tried) == 2
     assert c.get(f"/jobs/{job}").json()["runs"]["a"]["state"] == "waiting"
+
+
+def test_live():
+    c, store, tmp, *_ = fresh()
+    job = "f" * 32
+    ready(store, job, {"g1": "can try", "lite6": "too big: no"})
+    url = f"/jobs/{job}/live"
+    assert c.post(url, json={"robot": "g1"}).status_code == 409, "it has not run yet"
+    store[f"run:{job}:g1"] = {"state": "running", "queued": time.time()}
+    assert c.post(url, json={"robot": "g1"}).status_code == 409
+    store[f"run:{job}:g1"]["state"] = "done"
+    store[f"run:{job}:lite6"] = {"state": "done", "queued": time.time()}
+    assert c.post(url, json={"robot": "lite6"}).status_code == 409, "a robot that said no"
+    for i in range(A.LIVE_PER_HOUR):
+        r = c.post(url, json={"robot": "g1"})
+        assert r.status_code == 200 and r.json()["url"].startswith("wss://x/live/")
+    assert c.post(url, json={"robot": "g1"}).status_code == 429
+    assert spent(tmp) == round(A.LIVE_PER_HOUR * A.LIVE_USD["modal"], 4), "each session is paid for up front"
+    tickets = [v for k, v in store.items() if k.startswith("live:")]
+    assert len(tickets) == A.LIVE_PER_HOUR and tickets[0]["robot"] == "g1"
 
 
 def test_files():

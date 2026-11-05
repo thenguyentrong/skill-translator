@@ -1,5 +1,6 @@
 // The two views after a job: left what the robot understood and is doing, right the same engine as the header.
-// The robots you picked: the three arms run live in the browser, the others replay their real run from the cloud.
+// Every robot you picked is interactive: the three arms run in the browser, the others run in the cloud and stream here.
+// Each one's scored first try can also be played back.
 import { engine } from "./app.js";
 
 const LIVE = ["ur5e", "panda", "xarm7"];
@@ -22,7 +23,7 @@ function shapeText(o) {
   return `box, ${+(x * 100).toFixed(1)} x ${+(y * 100).toFixed(1)} x ${cm(z)}`;
 }
 
-export function watchPanel(card, check, names, api) {
+export function watchPanel(card, check, names, api, job) {
   const box = el("div", "yours-watch");
   if ((card.kind ?? "pick_place") !== "pick_place" || !card.objects?.[card.grip?.object]?.size) {
     box.append(el("h3", "", "Watch it run"), el("p", "small", "The 3D view covers pick and place so far. For this job, the recorded tries are the view."));
@@ -84,26 +85,30 @@ export function watchPanel(card, check, names, api) {
   const buttons = el("div", "watch-buttons");
   const knock = el("button", "hit", "Knock it out"), again = el("button", "", "New layout");
   const play = el("button", "hit", "Pause"), close = el("button", "", "Stop");
+  const toLive = el("button", "", "Go live"), toRun = el("button", "", "Replay its scored try");
   const scrub = el("input", "scrub");
   Object.assign(scrub, { type: "range", min: 0, max: 1, step: 0.01, value: 0 });
   scrub.setAttribute("aria-label", "Move through the run");
-  [knock, again, play, close].forEach((b) => { b.type = "button"; });
-  buttons.append(play, scrub, knock, again, close);
+  [knock, again, play, close, toLive, toRun].forEach((b) => { b.type = "button"; });
+  buttons.append(play, scrub, knock, again, toLive, toRun, close);
   const small = el("p", "small");
   side.append(host, buttons, small);
   const shown = (on) => {
     [play, scrub].forEach((e) => { e.hidden = !recorded || !on; });
     [knock, again].forEach((e) => { e.hidden = recorded || !on; });
+    toLive.hidden = !on || !recorded || !runs[current]?.state?.startsWith("done");
+    toRun.hidden = !on || recorded || !runs[current]?.log_url;
     close.hidden = !on;
   };
   const LIVE_NOTE = `Live in your browser with the sizes from the card. Drag the ${o} or knock it out and watch the left side react. The object's position comes from the simulator here, not cameras, so this is a separate run from the scored tries.`;
-  const RUN_NOTE = "This is the robot's real first try from the cloud, played back in the engine: its own cameras, full physics and the IK that keeps the arm off its body. Move the slider to go through it.";
+  const CLOUD_NOTE = `This robot is running on Modal right now and streaming here, for up to 2 minutes. Drag the ${o} or knock it out and it reacts. It reads the object's position from the simulator here, not cameras, so this is a separate run from the scored tries.`;
+  const RUN_NOTE = "This is the robot's real first try, played back: its own cameras, full physics and the IK that keeps the arm off its body. Move the slider to go through it.";
   const ROUND = cont.shape === "box" ? " A square container is drawn round here." : "";
   grid.append(think, side);
   box.append(top, grid);
 
   let timer = 0, now = "reach", note = "", seen = 0, since = 0, recorded = false, current = null, last = -1, verdictText = "";
-  let runs = {};
+  let runs = {}, socket = null;
   shown(false);
   const line = (t, text, alert) => {
     const li = el("li", alert ? "alert" : "");
@@ -129,7 +134,7 @@ export function watchPanel(card, check, names, api) {
       scrub.max = pb.end;
       play.textContent = pb.playing ? "Pause" : pb.t >= pb.end ? "Play again" : "Play";
     }
-    const t = pb ? pb.t : s.time - since;
+    const t = pb ? pb.t : Math.max(0, s.time - since);
     if (s.step !== now) {
       now = s.step;
       line(t, SAY[now] ?? now);
@@ -166,26 +171,11 @@ export function watchPanel(card, check, names, api) {
     clearInterval(timer);
     timer = 0;
   };
-  const go = async (robot) => {
-    const run = runs[robot], live = LIVE.includes(robot);
-    if (!live && !run?.log_url) return;
-    current = robot;
-    seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.robot === robot));
-    start.remove();
-    stop();
-    doing.textContent = "Loading the robot";
-    recorded = !live;
-    let log = null;
-    if (recorded) {
-      try {
-        log = await (await fetch(api + run.log_url)).json();
-      } catch {
-        doing.textContent = "Could not load this run.";
-        return;
-      }
-      verdictText = log.success ? `Passed: the ${o} ended ${place(card.success?.test)} the ${c}.` : `Failed this try: ${FAILS[log.reason] ?? word(log.reason)}.`;
-    }
-    await engine.open(host, robot, card, log);
+  const hang = () => {
+    socket?.close();
+    socket = null;
+  };
+  const begin = (text, log) => {
     since = engine.state().time;
     clear();
     last = -1;
@@ -195,9 +185,76 @@ export function watchPanel(card, check, names, api) {
     });
     if (log?.seen?.[held]) line(0, `Its cameras found the ${o} at x ${log.seen[held][0]}, y ${log.seen[held][1]} m`);
     if (log?.seen?.[into]) line(0, `Its cameras found the ${c} at x ${log.seen[into][0]}, y ${log.seen[into][1]} m`);
-    small.textContent = (recorded ? RUN_NOTE : LIVE_NOTE) + ROUND;
+    small.textContent = text + ROUND;
     shown(true);
     timer = setInterval(update, 120);
+  };
+  const press = (robot) => {
+    current = robot;
+    seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.robot === robot));
+    start.remove();
+    stop();
+    hang();
+  };
+  const playRun = async (robot) => {
+    press(robot);
+    recorded = true;
+    doing.textContent = "Loading its run";
+    let log;
+    try {
+      log = await (await fetch(api + runs[robot].log_url)).json();
+    } catch {
+      doing.textContent = "Could not load this run.";
+      return;
+    }
+    verdictText = log.success ? `Passed: the ${o} ended ${place(card.success?.test)} the ${c}.` : `Failed this try: ${FAILS[log.reason] ?? word(log.reason)}.`;
+    await engine.open(host, robot, card, log);
+    begin(RUN_NOTE, log);
+  };
+  const goCloud = async (robot) => {
+    press(robot);
+    recorded = false;
+    shown(false);
+    doing.textContent = "Starting the robot on Modal, a few seconds";
+    await engine.open(host, robot, card);
+    const fallback = (why) => {
+      hang();
+      if (current !== robot) return;
+      if (runs[robot]?.log_url) playRun(robot).then(() => { why && (small.textContent = `${why} Showing its scored try instead.`); });
+      else doing.textContent = why;
+    };
+    let url;
+    try {
+      const r = await fetch(`${api}/jobs/${job}/live`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ robot }) });
+      if (!r.ok) return fallback(r.status === 429 ? "Ten live sessions an hour at most." : r.status === 403 ? "This demo has used up its budget." : "Could not start a live session.");
+      ({ url } = await r.json());
+    } catch {
+      return fallback("Could not reach the server.");
+    }
+    const ws = new WebSocket(url);
+    socket = ws;
+    let open = false;
+    ws.onmessage = (e) => {
+      const m = JSON.parse(e.data);
+      if (m.hello) {
+        open = true;
+        engine.stream((msg) => { if (ws.readyState === 1) ws.send(JSON.stringify(msg)); }, m.hello.bowl);
+        begin(CLOUD_NOTE);
+      } else if (m.q) engine.feed(m.q, m.s);
+      else if (m.end) small.textContent = "The 2 minutes are up. Press the robot's name to start again.";
+    };
+    ws.onclose = () => {
+      if (socket === ws) socket = null;
+      if (!open && current === robot) fallback("The live session could not start.");
+    };
+  };
+  const go = (robot) => (LIVE.includes(robot) ? goLocal(robot) : goCloud(robot));
+  const goLocal = async (robot) => {
+    press(robot);
+    recorded = false;
+    doing.textContent = "Loading the robot";
+    await engine.open(host, robot, card);
+    begin(LIVE_NOTE);
   };
   box.setRuns = (next) => {
     runs = next;
@@ -213,29 +270,34 @@ export function watchPanel(card, check, names, api) {
         b.onclick = () => go(r);
         seg.append(b);
       }
-      const wait = !LIVE.includes(r) && !next[r].log_url;
-      const failed = next[r].state === "failed";
+      const wait = !LIVE.includes(r) && next[r].state !== "done";
       b.disabled = wait;
-      b.textContent = `${names[r] ?? r}${wait && !failed ? ", running" : ""}`;
+      b.textContent = `${names[r] ?? r}${wait && next[r].state !== "failed" ? ", running" : ""}`;
     }
     if (!current) {
-      const first = picked.find((r) => LIVE.includes(r) || next[r].log_url);
+      const first = picked.find((r) => LIVE.includes(r) || next[r].state === "done");
       start.disabled = !first;
       start.textContent = first ? `Watch ${names[first] ?? first}` : "Waiting for its run in the cloud";
       start.onclick = () => go(first);
     }
   };
-  box.stop = stop;
+  box.stop = () => {
+    stop();
+    hang();
+  };
   knock.onclick = () => engine.knock();
   again.onclick = () => {
     engine.again();
     since = engine.state().time;
     clear();
   };
+  toLive.onclick = () => go(current);
+  toRun.onclick = () => playRun(current);
   play.onclick = () => engine.toggle();
   scrub.oninput = () => engine.seek(+scrub.value);
   close.onclick = async () => {
     stop();
+    hang();
     current = null;
     await engine.close();
     host.append(start);

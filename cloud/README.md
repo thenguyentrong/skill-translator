@@ -18,4 +18,4 @@ Anyone can use it until a budget runs out. `BUDGET_USD` in `api.py` has one per 
 
 Other limits: 5 videos an hour per address, 3 robots per video, 60 MB, 15 s. A job's id is random, so results can only be opened with its link. Results are deleted after 24 hours and the video as soon as the card is done. Training is not on this path.
 
-Each robot's first try also saves its joint state at every tick (`<robot>_run.json`). The site plays that back in the browser engine, so any picked robot can be watched step by step. UR5e, Panda and xArm7 also run live in the browser; humanoid arms need the self-avoidance in the Python IK, so they replay. Pick and place only so far.
+Each robot's first try saves its joint state at every tick (`<robot>_run.json`) and its practised grip. Every picked robot is interactive on the site: UR5e, Panda and xArm7 run in the browser, the others run `translator/live.py` on Modal and stream to the browser over a WebSocket (`cloud/stream.py`), 2 minutes per session, 10 sessions an hour per address. Their scored try can also be played back. Pick and place only so far.

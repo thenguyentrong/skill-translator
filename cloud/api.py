@@ -22,10 +22,12 @@ from pydantic import BaseModel
 BUDGET_USD = {"meta": 140.0, "modal": 25.0}
 VIDEO_USD = {"meta": 0.35, "modal": 0.05}  # worst case: a 15 s clip through SAM and Muse, plus its two Modal steps
 RUN_USD = {"modal": 0.20}  # worst case: one robot on 8 CPUs until the 25 min timeout
+LIVE_USD = {"modal": 0.03}  # worst case: one live session, 2 CPUs for 5 minutes
 MAX_BYTES = 60 * 1024 * 1024
 MAX_ROBOTS = 3
 TRIALS = 5
 VIDEOS_PER_HOUR = 5  # per address, so one person cannot use up the whole budget in minutes
+LIVE_PER_HOUR = 10
 KEEP_SECONDS = 24 * 3600
 JOB_TIMEOUT = 15 * 60
 RUN_TIMEOUT = 30 * 60
@@ -72,6 +74,10 @@ class Run(BaseModel):
     robots: list[str]
 
 
+class LiveRun(BaseModel):
+    robot: str
+
+
 def sweep(store, root, now=None):
     """Removes everything about jobs older than a day, and folders no job owns."""
     now = time.time() if now is None else now
@@ -87,31 +93,36 @@ def sweep(store, root, now=None):
     for key in list(store.keys()):
         if key.startswith("run:") and key.split(":")[1] not in live:
             store.pop(key)
+        elif key.startswith("live:") and now - store[key]["created"] > 3600:
+            store.pop(key)
     for folder in root.iterdir() if root.exists() else ():
         if folder.is_dir() and folder.name not in live and ID.fullmatch(folder.name):
             shutil.rmtree(folder, ignore_errors=True)
 
 
-def make_api(store, root, ingest, run_robot, commit=lambda: None, reload=lambda: None):
+def make_api(store, root, ingest, run_robot, commit=lambda: None, reload=lambda: None, live_url=""):
     app = FastAPI(title="Translator", docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
     root = Path(root)
     root.mkdir(parents=True, exist_ok=True)
     budget = Budget(root / "budget.json", commit)
     lock = threading.Lock()
-    recent = {}
+    recent, sessions = {}, {}
 
     def address(request):
         return request.client.host if request.client else "?"  # Modal sets this; forwarded headers can be faked
 
-    def videos_left(ip):
+    def within(seen, ip, limit, what):
         now = time.time()
         with lock:
-            if len(recent) > 10000:
-                recent.clear()
-            times = recent[ip] = [t for t in recent.get(ip, []) if now - t < 3600]
-            if len(times) >= VIDEOS_PER_HOUR:
-                raise HTTPException(429, f"{VIDEOS_PER_HOUR} videos an hour at most, try again later")
+            if len(seen) > 10000:
+                seen.clear()
+            times = seen[ip] = [t for t in seen.get(ip, []) if now - t < 3600]
+            if len(times) >= limit:
+                raise HTTPException(429, f"{limit} {what} an hour at most, try again later")
+
+    def videos_left(ip):
+        within(recent, ip, VIDEOS_PER_HOUR, "videos")
 
     def load(job):
         state = store.get(f"job:{job}") if ID.fullmatch(job) else None
@@ -205,6 +216,23 @@ def make_api(store, root, ingest, run_robot, commit=lambda: None, reload=lambda:
             store[f"run:{job}:{robot}"] = {"state": "waiting", "queued": time.time(), "trials": TRIALS}
             run_robot(job, robot, TRIALS)
         return {"started": fresh}
+
+    @app.post("/jobs/{job}/live")
+    def go_live(job: str, req: LiveRun, request: Request):
+        ip = address(request)
+        state = load(job)
+        run = store.get(f"run:{job}:{req.robot}") if state.get("check", {}).get(req.robot) == "can try" else None
+        if not run or run["state"] != "done":
+            raise HTTPException(409, "this robot has not finished its tries yet")
+        if not live_url:
+            raise HTTPException(503, "live sessions are switched off")
+        within(sessions, ip, LIVE_PER_HOUR, "live sessions")
+        budget.take(LIVE_USD)
+        with lock:
+            sessions[ip].append(time.time())
+        token = uuid.uuid4().hex
+        store[f"live:{token}"] = {"job": job, "robot": req.robot, "created": time.time()}
+        return {"url": f"{live_url}/live/{token}"}
 
     @app.get("/jobs/{job}/files/{name}")
     def file(job: str, name: str):

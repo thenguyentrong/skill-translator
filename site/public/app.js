@@ -20,6 +20,7 @@ if (lowEnd) quality = { pixelRatio: Math.min(devicePixelRatio, 1.25), shadows: 1
 let lastInteraction = -1e9, doneSince = null;
 let watching = null;  // the card of an uploaded job while the engine runs it in the watch panel
 let replay = null;  // a recorded run from the cloud: { qpos, labels, fps, t, playing }
+let stream = null;  // a robot running live in the cloud: { q, s, send }
 let opened;
 const ready = new Promise((r) => (opened = r));
 const TINT = { yellow: 0xf2b705, red: 0xd8412f, orange: 0xe8862a, brown: 0x8a5a33, tan: 0xd2a56d, green: 0x3f9a5a, sage_green: 0x8fae8b, black: 0x2a2c30, white: 0xe9ecef, grey: 0x9aa3ab, gray: 0x9aa3ab, blue: 0x3f7fd0 };
@@ -264,6 +265,14 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 
+// A cloud robot sees a drag as the object being put down again and again, a few times a second.
+function sendDrag(p, last) {
+  const now = performance.now();
+  if (!stream || (!last && now - stream.moved < 120)) return;
+  stream.moved = now;
+  stream.send({ do: "move", xy: [p[0], p[1]] });
+}
+
 // Pointer: grab near the cube to drag it across the table, anywhere else orbits the camera.
 function setupPointer() {
   const canvas = renderer.domElement, ray = new THREE.Raycaster(), pointer = new THREE.Vector2();
@@ -285,13 +294,14 @@ function setupPointer() {
     return [Math.min(tc[0] + th[0] - 0.03, Math.max(tc[0] - th[0] + 0.03, p[0])), Math.min(tc[1] + th[1] - 0.03, Math.max(tc[1] - th[1] + 0.03, p[1])), z];
   };
   canvas.addEventListener("pointerdown", (e) => {
-    if (!robot || !nearCube(e)) return;
+    if (!robot || replay || !nearCube(e)) return;
     const p = dragPoint(e);
     if (!p) return;
     e.stopImmediatePropagation();
     controls.enabled = false;
     canvas.setPointerCapture(e.pointerId);
     robot.startDrag(p);
+    sendDrag(p);
     lastInteraction = performance.now();
     $("#stage-wrap").classList.add("dragging");
   }, { capture: true });
@@ -299,14 +309,20 @@ function setupPointer() {
     if (!robot) return;
     if (robot.drag) {
       const p = dragPoint(e);
-      if (p) robot.moveDrag(p);
+      if (p) {
+        robot.moveDrag(p);
+        sendDrag(p);
+      }
       lastInteraction = performance.now();
     } else if (e.pointerType === "mouse") {
       $("#stage-wrap").classList.toggle("can-grab", !!nearCube(e));
     }
   });
   const end = () => {
-    if (robot?.drag) robot.endDrag();
+    if (robot?.drag) {
+      sendDrag(robot.drag, true);
+      robot.endDrag();
+    }
     controls.enabled = true;
     $("#stage-wrap").classList.remove("dragging");
   };
@@ -349,6 +365,7 @@ function frame(now) {
   watchFrames(ms);
   if (!robot) return;
   if (replay) showRecorded(ms);
+  else if (stream) showStreamed(ms);
   else robot.stepPhysics(Math.round((ms / 1000) / robot.m.opt.timestep));
   const st = robot.step;
   if (st === "done" && !robot.drag) {
@@ -409,6 +426,30 @@ function showRecorded(ms) {
   if (i >= r.qpos.length - 1) r.playing = false;
 }
 
+// A robot running in the cloud. Frames arrive in bursts over the network, so they wait in a short queue and play at
+// their own 25 Hz. Nothing is simulated here.
+function showStreamed(ms) {
+  const f = stream;
+  if (!f.queue.length && !f.now) return;
+  f.clock += ms;
+  while (f.clock >= 40 && f.queue.length) {
+    f.now = f.queue.shift();
+    f.clock -= 40;
+    if (f.queue.length > 25) f.queue.splice(0, f.queue.length - 8);  // fell behind: catch up
+  }
+  f.clock = Math.min(f.clock, 40);
+  if (!f.now) return;
+  const { q, s } = f.now;
+  robot.d.qpos.set(q);
+  robot.d.time = s.t;
+  mj.mj_kinematics(robot.m, robot.d);
+  robot.step = s.step;
+  robot.grip = s.held ? 1 : 0;
+  robot.tries = s.tries;
+  robot.recoveries = s.recoveries;
+  robot.note = s.last === "object moved" ? `The ${robot.word} moved. Going after it.` : "";
+}
+
 function showJob(card) {
   robot.setJob(card);
   drawObjects(robot.meta);
@@ -423,7 +464,7 @@ export const engine = {
   async open(host, name, card, run = null) {
     await ready;
     watching = card;
-    replay = null;
+    replay = stream = null;
     host.append($("#stage-wrap"));
     if (robot.meta.name === name) showJob(card);
     else await loadInto(name);
@@ -440,10 +481,18 @@ export const engine = {
     }
     resize();
   },
+  // after open(): frames from a cloud session go in through feed(), and `send` carries drags and knocks back
+  stream(send, bowl) {
+    stream = { queue: [], now: null, clock: 0, send, moved: 0 };
+    robot.placeBowl(bowl);
+  },
+  feed(q, s) {
+    stream?.queue.push({ q, s });
+  },
   async close() {
     if (!watching) return;
     watching = null;
-    replay = null;
+    replay = stream = null;
     $(".hero").insertBefore($("#stage-wrap"), $(".hud"));
     const home = document.querySelector('[data-load][aria-pressed="true"]')?.dataset.load ?? "ur5e";
     if (robot.meta.name === home) showJob(robot.homeCard);
@@ -456,10 +505,22 @@ export const engine = {
     if (replay.t >= (replay.qpos.length - 1) / replay.fps) replay.t = 0;
     replay.playing = !replay.playing;
   },
-  state: () => robot?.state(),
+  state() {
+    const st = robot?.state();
+    return st && stream?.now ? { ...st, inBowl: stream.now.s.success } : st;
+  },
   log: () => robot?.log ?? [],
-  knock() { robot.knock(); lastInteraction = performance.now(); },
-  again() { robot.newLayout(); trailPts.length = 0; lastInteraction = performance.now(); },
+  knock() {
+    if (stream) stream.send({ do: "knock" });
+    else robot.knock();
+    lastInteraction = performance.now();
+  },
+  again() {
+    if (stream) stream.send({ do: "new" });
+    else robot.newLayout();
+    trailPts.length = 0;
+    lastInteraction = performance.now();
+  },
 };
 
 async function start() {

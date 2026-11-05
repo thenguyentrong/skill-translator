@@ -56,10 +56,17 @@ def make_card(clip, out, save):
     save(state="ready", check=answers)
 
 
+def plain_name(card):
+    """Muse writes the card's name and it ends up in a file name."""
+    return {**card, "name": re.sub(r"[^a-z0-9_]+", "_", card["name"].lower())[:60] or "job"}
+
+
 def try_one(card, robot, out, trials):
-    """Returns the score ('4/5') or why the robot could not start, the first try's clip, and its state at every tick."""
+    """Returns the score ('4/5') or why the robot could not start, the first try's clip, and its state at every tick.
+    Keeps the grip depth it practised, so a live session starts from the same grip."""
     from run_job import try_robot
-    card = {**card, "name": re.sub(r"[^a-z0-9_]+", "_", card["name"].lower())[:60] or "job"}  # used in a file name
+    from translator.scene import practice_file
+    card = plain_name(card)
     keep = {}
     result = try_robot(robot, card, out, trials, keep=keep)
     clip = next(iter(sorted(out.glob(f"{robot}_trial0_*.mp4"))), None)
@@ -68,4 +75,7 @@ def try_one(card, robot, out, trials):
         log = f"{robot}_run.json"
         keep["qpos"] = [[round(float(v), 4) for v in q] for q in keep["qpos"]]
         (out / log).write_text(json.dumps({"robot": robot, "fps": 25, **keep}, separators=(",", ":")))
+        grip = practice_file(robot, card)
+        if grip.exists():
+            (out / f"{robot}_practice.json").write_text(grip.read_text())
     return {"result": result, "clip": clip.name if clip else None, "log": log}

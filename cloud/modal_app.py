@@ -1,7 +1,7 @@
 """Translator in the cloud: `bash cloud/deploy.sh` (see cloud/README.md).
 
 web: the API and the budget, no MuJoCo, no Meta key. ingest: ffmpeg on the uploaded file, no secrets at all.
-learn: SAM + Muse + every robot's yes or no. robot_try: one robot, simulation only.
+learn: SAM + Muse + every robot's yes or no. robot_try: one robot, simulation only. live: one robot, streamed to a browser.
 """
 import traceback
 from pathlib import Path
@@ -24,7 +24,7 @@ web_image = (modal.Image.debian_slim(python_version="3.12")
 worker_image = (modal.Image.debian_slim(python_version="3.12")
                 .apt_install("ffmpeg", "libosmesa6", "libgl1", "libglib2.0-0", "fonts-dejavu-core")
                 .pip_install("mujoco==3.17.0", "mink==1.3.0", "daqp==0.10.3", "numpy==2.2.6", "imageio==2.38.1",
-                             "imageio-ffmpeg==0.6.0", "pillow==12.3.0")
+                             "imageio-ffmpeg==0.6.0", "pillow==12.3.0", "fastapi==0.162.0", "websockets==15.0.1")
                 .env({"MUJOCO_GL": "osmesa", "PYOPENGL_PLATFORM": "osmesa", "PYTHONPATH": "/app:/app/scripts", "PRACTICE_WORKERS": "8"})
                 .add_local_dir(ROOT / "cloud", "/app/cloud", ignore=["**/__pycache__/**"])
                 .add_local_dir(ROOT / "translator", "/app/translator", ignore=["**/__pycache__/**"])
@@ -97,6 +97,14 @@ def robot_try(job, robot, trials):
         store[key] = {**run, "state": "failed", "error": "This robot's try crashed."}
 
 
+@app.function(image=worker_image, volumes={"/jobs": files}, cpu=2, memory=4096, timeout=300, max_containers=3, scaledown_window=60)
+@modal.concurrent(max_inputs=1)
+@modal.asgi_app(label="translator-live")
+def live():
+    from cloud.stream import make_stream
+    return make_stream(store, JOBS, files.reload)
+
+
 @app.function(image=web_image, volumes={"/jobs": files}, schedule=modal.Period(hours=6))
 def clean():
     from cloud.api import sweep
@@ -110,4 +118,5 @@ def clean():
 @modal.asgi_app(label="translator-api")
 def web():
     from cloud.api import make_api
-    return make_api(store, JOBS, ingest.spawn, robot_try.spawn, files.commit, files.reload)
+    return make_api(store, JOBS, ingest.spawn, robot_try.spawn, files.commit, files.reload,
+                     "wss://gokuvietsub1--translator-live.us-east.modal.run")

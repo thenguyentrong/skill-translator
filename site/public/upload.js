@@ -175,7 +175,7 @@ export function uploadPanel(cardView) {
       const card = el("div", "yours-card");
       left.append(film, card);
       const tries = out.querySelector(".yours-tries") ?? el("div", "yours-tries");
-      const watch = out.querySelector(".yours-watch") ?? (s.check && s.state === "ready" ? watchPanel(s.card, s.check, NAMES, API) : null);
+      const watch = out.querySelector(".yours-watch") ?? (s.check && s.state === "ready" ? watchPanel(s.card, s.check, NAMES, API, job) : null);
       out.replaceChildren(left, el("div", "verdicts answers yours-robots"), tries, ...(watch ? [watch] : []));
       if (s.card) card.append(cardView({ goal: s.card.goal, kind: s.card.kind ?? "pick_place", objects: Object.keys(s.card.objects ?? {}), steps: (s.card.steps ?? []).map((x) => x.do), needs: s.card.needs }));
       if (s.check) robots(s, out.querySelector(".yours-robots"));
