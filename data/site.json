@@ -1,0 +1,522 @@
+{
+ "kinds": [
+  {
+   "id": "pick",
+   "tab": "Pick and place",
+   "title": "A hand puts a lemon into a bowl.",
+   "credit": "Stock clip: \"Person Putting Orange in Bowl\" by SHVETS production, Pexels.",
+   "job": {
+    "seconds": 56,
+    "usd": 0.07
+   },
+   "overlay": "media/lemon_sam.mp4",
+   "card": {
+    "kind": "pick_place",
+    "goal": "A lemon from the mesh bag is inside the wooden bowl.",
+    "objects": [
+     "Lemon (6 x 6 x 6 cm)",
+     "Bowl (22 cm across)"
+    ],
+    "steps": [
+     "reach",
+     "descend",
+     "close",
+     "lift",
+     "carry",
+     "lower",
+     "open",
+     "retreat"
+    ],
+    "needs": {}
+   },
+   "result": "media/lemon_robots.mp4",
+   "robots": [
+    {
+     "robot": "UR5e",
+     "no": null,
+     "why": null,
+     "score": "10/10",
+     "rate": 1.0
+    },
+    {
+     "robot": "Franka FR3",
+     "no": null,
+     "why": null,
+     "score": "10/10",
+     "rate": 1.0
+    },
+    {
+     "robot": "Franka Panda",
+     "no": null,
+     "why": null,
+     "score": "9/10",
+     "rate": 0.9
+    },
+    {
+     "robot": "xArm7",
+     "no": null,
+     "why": null,
+     "score": "10/10",
+     "rate": 1.0
+    },
+    {
+     "robot": "Lite6",
+     "no": "Too big for its gripper",
+     "why": "",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "SO-101",
+     "no": null,
+     "why": null,
+     "score": "5/10",
+     "rate": 0.5
+    },
+    {
+     "robot": "Unitree G1",
+     "no": null,
+     "why": null,
+     "score": "5/10",
+     "rate": 0.5
+    },
+    {
+     "robot": "TienKung 3",
+     "no": null,
+     "why": null,
+     "score": "10/10",
+     "rate": 1.0
+    },
+    {
+     "robot": "LimX Oli",
+     "no": null,
+     "why": null,
+     "score": "2/10",
+     "rate": 0.2
+    }
+   ],
+   "robots_title": "Each robot with this card, 10 tries with its own cameras"
+  },
+  {
+   "id": "open",
+   "tab": "Open a door",
+   "title": "A woman opens a tall glass cabinet.",
+   "credit": "Stock clip: \"Young Woman Taking Mug out of Cupboard\" by Ivan S, Pexels.",
+   "job": {
+    "seconds": 66,
+    "usd": 0.07
+   },
+   "overlay": "media/door_sam.mp4",
+   "card": {
+    "kind": "open",
+    "goal": "The right glass door of the white cabinet is open at least 70 degrees.",
+    "objects": [
+     "White display cabinet (120 x 45 x 190 cm)",
+     "Round knob"
+    ],
+    "steps": [
+     "reach",
+     "approach",
+     "close",
+     "pull",
+     "open"
+    ],
+    "needs": {}
+   },
+   "answers": [
+    {
+     "robot": "UR5e",
+     "no": "No room in its reach",
+     "why": "The handle's path while the door opens to 85 degrees does not fit between 0.20 and 0.68 m from the arm"
+    },
+    {
+     "robot": "Franka FR3",
+     "no": "No room in its reach",
+     "why": "The handle's path while the door opens to 85 degrees does not fit between 0.20 and 0.70 m from the arm"
+    },
+    {
+     "robot": "Franka Panda",
+     "no": "No room in its reach",
+     "why": "The handle's path while the door opens to 85 degrees does not fit between 0.20 and 0.67 m from the arm"
+    },
+    {
+     "robot": "xArm7",
+     "no": "No room in its reach",
+     "why": "The handle's path while the door opens to 85 degrees does not fit between 0.20 and 0.67 m from the arm"
+    },
+    {
+     "robot": "Lite6",
+     "no": "No room in its reach",
+     "why": "The handle's path while the door opens to 85 degrees does not fit between 0.12 and 0.41 m from the arm"
+    },
+    {
+     "robot": "SO-101",
+     "no": "No room in its reach",
+     "why": "The handle's path while the door opens to 85 degrees does not fit between 0.12 and 0.32 m from the arm"
+    },
+    {
+     "robot": "Unitree G1",
+     "no": "No room in its reach",
+     "why": "The handle's path while the door opens to 85 degrees does not fit between 0.09 and 0.30 m from the arm"
+    },
+    {
+     "robot": "TienKung 3",
+     "no": "No room in its reach",
+     "why": "The handle's path while the door opens to 85 degrees does not fit between 0.12 and 0.41 m from the arm"
+    },
+    {
+     "robot": "LimX Oli",
+     "no": "No room in its reach",
+     "why": "The handle's path while the door opens to 85 degrees does not fit between 0.13 and 0.43 m from the arm"
+    }
+   ],
+   "answers_title": "Every robot said no to this real cabinet: the door's swing is bigger than its reach.",
+   "result": "media/door_robots.mp4",
+   "robots": [
+    {
+     "robot": "UR5e",
+     "no": null,
+     "why": null,
+     "score": "8/10",
+     "rate": 0.8
+    },
+    {
+     "robot": "Franka FR3",
+     "no": null,
+     "why": null,
+     "score": "8/10",
+     "rate": 0.8
+    },
+    {
+     "robot": "Franka Panda",
+     "no": null,
+     "why": null,
+     "score": "9/10",
+     "rate": 0.9
+    },
+    {
+     "robot": "xArm7",
+     "no": null,
+     "why": null,
+     "score": "9/10",
+     "rate": 0.9
+    },
+    {
+     "robot": "Lite6",
+     "no": "Handle too thin",
+     "why": "The gripper closes only to 23 mm, the handle is 14 mm thick",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "SO-101",
+     "no": null,
+     "why": null,
+     "score": "4/10",
+     "rate": 0.4
+    },
+    {
+     "robot": "Unitree G1",
+     "no": null,
+     "why": null,
+     "score": "1/10",
+     "rate": 0.1
+    },
+    {
+     "robot": "TienKung 3",
+     "no": null,
+     "why": null,
+     "score": "8/10",
+     "rate": 0.8
+    },
+    {
+     "robot": "LimX Oli",
+     "no": null,
+     "why": null,
+     "score": "5/10",
+     "rate": 0.5
+    }
+   ],
+   "robots_title": "A small tabletop cabinet instead (hand-written card), 10 tries each"
+  },
+  {
+   "id": "carry",
+   "tab": "Carry",
+   "title": "A woman carries a large box through a gate.",
+   "credit": "Stock clip: \"A Woman Taking Her Packages Inside\" by Kampus Production, Pexels.",
+   "job": {
+    "seconds": 65,
+    "usd": 0.11
+   },
+   "overlay": "media/carry_sam.mp4",
+   "card": {
+    "kind": "carry",
+    "goal": "Large cardboard box is carried from outside the gate to just inside the doorway.",
+    "objects": [
+     "Large cardboard box (40 x 55 x 40 cm)",
+     "Inside gateway"
+    ],
+    "steps": [
+     "reach",
+     "close",
+     "lift",
+     "walk"
+    ],
+    "needs": {
+     "hands": 2,
+     "move_m": 1.2,
+     "keep_upright": false,
+     "fragile": false,
+     "guessed": [
+      "move_m",
+      "mass_kg",
+      "keep_upright",
+      "fragile"
+     ],
+     "mass_kg": 5.0
+    }
+   },
+   "answers": [
+    {
+     "robot": "UR5e",
+     "no": "Too big for its gripper",
+     "why": "The gripper opens at most 85 mm, the large cardboard box is 400 mm wide"
+    },
+    {
+     "robot": "Franka FR3",
+     "no": "Too big for its gripper",
+     "why": "The gripper opens at most 85 mm, the large cardboard box is 400 mm wide"
+    },
+    {
+     "robot": "Franka Panda",
+     "no": "Too big for its gripper",
+     "why": "The gripper opens at most 83 mm, the large cardboard box is 400 mm wide"
+    },
+    {
+     "robot": "xArm7",
+     "no": "Two-hand grip not built",
+     "why": "The large cardboard box has no handles; holding a box with two hands from its sides is not built yet (carrying works by side handles or a top handle)"
+    },
+    {
+     "robot": "Lite6",
+     "no": "Too big for its gripper",
+     "why": "The gripper opens at most 41 mm, the large cardboard box is 400 mm wide"
+    },
+    {
+     "robot": "SO-101",
+     "no": "Too big for its gripper",
+     "why": "The gripper opens at most 111 mm, the large cardboard box is 400 mm wide"
+    },
+    {
+     "robot": "Unitree G1",
+     "no": "Two-hand grip not built",
+     "why": "The large cardboard box has no handles; holding a box with two hands from its sides is not built yet (carrying works by side handles or a top handle)"
+    },
+    {
+     "robot": "TienKung 3",
+     "no": "Too big for its gripper",
+     "why": "The gripper opens at most 85 mm, the large cardboard box is 400 mm wide"
+    },
+    {
+     "robot": "LimX Oli",
+     "no": "Too big for its gripper",
+     "why": "The gripper opens at most 64 mm, the large cardboard box is 400 mm wide"
+    }
+   ],
+   "answers_title": "Every robot said no: too big, or no two-hand grip without handles yet.",
+   "result": "media/carry_robots.mp4",
+   "robots": [
+    {
+     "robot": "UR5e",
+     "no": "Needs two hands",
+     "why": "The crate has a handle on each side and needs 2 hands, the UR5e has 1",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "Franka FR3",
+     "no": "Needs two hands",
+     "why": "The crate has a handle on each side and needs 2 hands, the Franka FR3 has 1",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "Franka Panda",
+     "no": "Needs two hands",
+     "why": "The crate has a handle on each side and needs 2 hands, the Franka Panda has 1",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "xArm7",
+     "no": "Needs two hands",
+     "why": "The crate has a handle on each side and needs 2 hands, the xArm7 has 1",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "Lite6",
+     "no": "Needs two hands",
+     "why": "The crate has a handle on each side and needs 2 hands, the Lite6 has 1",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "SO-101",
+     "no": "Needs two hands",
+     "why": "The crate has a handle on each side and needs 2 hands, the SO-101 has 1",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "Unitree G1",
+     "no": null,
+     "why": null,
+     "score": "10/10",
+     "rate": 1.0
+    },
+    {
+     "robot": "TienKung 3",
+     "no": "Needs two hands",
+     "why": "The crate has a handle on each side and needs 2 hands, the TienKung 3 has 1",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "LimX Oli",
+     "no": "Needs two hands",
+     "why": "The crate has a handle on each side and needs 2 hands, the LimX Oli has 1",
+     "score": null,
+     "rate": 0
+    }
+   ],
+   "robots_title": "A crate with two handles (hand-written card), 10 tries each",
+   "robots2": [
+    {
+     "robot": "UR5e",
+     "no": "Must walk, cannot",
+     "why": "The two places are 1.7 m apart, the UR5e reaches 1.35 m from one side to the other and cannot move",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "Franka FR3",
+     "no": "Must walk, cannot",
+     "why": "The two places are 1.7 m apart, the Franka FR3 reaches 1.39 m from one side to the other and cannot move",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "Franka Panda",
+     "no": "Must walk, cannot",
+     "why": "The two places are 1.7 m apart, the Franka Panda reaches 1.34 m from one side to the other and cannot move",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "xArm7",
+     "no": "Must walk, cannot",
+     "why": "The two places are 1.7 m apart, the xArm7 reaches 1.34 m from one side to the other and cannot move",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "Lite6",
+     "no": "Must walk, cannot",
+     "why": "The two places are 1.7 m apart, the Lite6 reaches 0.83 m from one side to the other and cannot move",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "SO-101",
+     "no": "Must walk, cannot",
+     "why": "The two places are 1.7 m apart, the SO-101 reaches 0.65 m from one side to the other and cannot move",
+     "score": null,
+     "rate": 0
+    },
+    {
+     "robot": "Unitree G1",
+     "no": null,
+     "why": null,
+     "score": "10/10",
+     "rate": 1.0
+    },
+    {
+     "robot": "TienKung 3",
+     "no": null,
+     "why": null,
+     "score": "10/10",
+     "rate": 1.0
+    },
+    {
+     "robot": "LimX Oli",
+     "no": null,
+     "why": null,
+     "score": "10/10",
+     "rate": 1.0
+    }
+   ],
+   "robots2_title": "A basket with a top handle (hand-written card), 10 tries each",
+   "note": "Clip at double speed. Humanoids move between tables on a sliding base: the legs do not step."
+  }
+ ],
+ "policies": [
+  {
+   "robot": "Unitree G1",
+   "skill": "cube to bowl",
+   "ok": 37,
+   "n": 50,
+   "smoothed": 37
+  },
+  {
+   "robot": "UR5e",
+   "skill": "lemon to bowl",
+   "ok": 32,
+   "n": 50,
+   "smoothed": 35
+  },
+  {
+   "robot": "xArm7",
+   "skill": "lemon to bowl",
+   "ok": 33,
+   "n": 50,
+   "smoothed": null
+  },
+  {
+   "robot": "TienKung 3",
+   "skill": "lemon to bowl",
+   "ok": 29,
+   "n": 50,
+   "smoothed": null
+  },
+  {
+   "robot": "Franka FR3",
+   "skill": "lemon to bowl",
+   "ok": 26,
+   "n": 50,
+   "smoothed": null
+  },
+  {
+   "robot": "SO-101",
+   "skill": "cube to bowl",
+   "ok": 24,
+   "n": 50,
+   "smoothed": 15
+  },
+  {
+   "robot": "Franka Panda",
+   "skill": "cube to bowl",
+   "ok": 19,
+   "n": 50,
+   "smoothed": 8
+  }
+ ],
+ "matrix": {
+  "ok": 611,
+  "n": 760,
+  "cells": 76,
+  "skills": 11,
+  "robots": 9
+ },
+ "policy_clip": "media/policy_g1.mp4"
+}

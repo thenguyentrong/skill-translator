@@ -1,0 +1,323 @@
+{
+ "robots": [
+  {
+   "id": "ur5e",
+   "name": "UR5e",
+   "hands": 1,
+   "mobile": false,
+   "reach": 0.795,
+   "footprint": 0.085,
+   "origin": [
+    0.0,
+    0.0
+   ],
+   "rated_kg": 5.0,
+   "model_kg": 26.1,
+   "gap_estimated": false,
+   "widest": 0.085,
+   "tightest": 0.001
+  },
+  {
+   "id": "fr3",
+   "name": "Franka FR3",
+   "hands": 1,
+   "mobile": false,
+   "reach": 0.82,
+   "footprint": 0.0,
+   "origin": [
+    0.0,
+    0.0
+   ],
+   "rated_kg": 3.0,
+   "model_kg": 10.2,
+   "gap_estimated": false,
+   "widest": 0.085,
+   "tightest": 0.001
+  },
+  {
+   "id": "panda",
+   "name": "Franka Panda",
+   "hands": 1,
+   "mobile": false,
+   "reach": 0.788,
+   "footprint": 0.0,
+   "origin": [
+    0.0,
+    0.0
+   ],
+   "rated_kg": 3.0,
+   "model_kg": 10.6,
+   "gap_estimated": false,
+   "widest": 0.083,
+   "tightest": 0.003
+  },
+  {
+   "id": "xarm7",
+   "name": "xArm7",
+   "hands": 1,
+   "mobile": false,
+   "reach": 0.787,
+   "footprint": 0.0,
+   "origin": [
+    0.0,
+    0.0
+   ],
+   "rated_kg": 3.5,
+   "model_kg": 3.5,
+   "gap_estimated": true,
+   "widest": 0.093,
+   "tightest": 0.004
+  },
+  {
+   "id": "lite6",
+   "name": "Lite6",
+   "hands": 1,
+   "mobile": false,
+   "reach": 0.488,
+   "footprint": 0.0,
+   "origin": [
+    0.0,
+    0.0
+   ],
+   "rated_kg": 0.6,
+   "model_kg": 10.4,
+   "gap_estimated": false,
+   "widest": 0.041,
+   "tightest": 0.023
+  },
+  {
+   "id": "so101",
+   "name": "SO-101",
+   "hands": 1,
+   "mobile": false,
+   "reach": 0.381,
+   "footprint": 0.075,
+   "origin": [
+    0.039,
+    -0.0
+   ],
+   "rated_kg": null,
+   "model_kg": 1.4,
+   "gap_estimated": false,
+   "widest": 0.111,
+   "tightest": 0.006
+  },
+  {
+   "id": "g1",
+   "name": "Unitree G1",
+   "hands": 2,
+   "mobile": true,
+   "reach": 0.351,
+   "footprint": 0.0,
+   "origin": [
+    -0.28,
+    -0.1
+   ],
+   "rated_kg": 2.0,
+   "model_kg": 3.5,
+   "gap_estimated": true,
+   "widest": 0.11,
+   "tightest": 0.0
+  },
+  {
+   "id": "tienkung3",
+   "name": "TienKung 3",
+   "hands": 1,
+   "mobile": true,
+   "reach": 0.482,
+   "footprint": 0.0,
+   "origin": [
+    -0.35,
+    -0.146
+   ],
+   "rated_kg": null,
+   "model_kg": 12.2,
+   "gap_estimated": false,
+   "widest": 0.085,
+   "tightest": 0.001
+  },
+  {
+   "id": "oli",
+   "name": "LimX Oli",
+   "hands": 1,
+   "mobile": true,
+   "reach": 0.502,
+   "footprint": 0.0,
+   "origin": [
+    -0.3,
+    0.0
+   ],
+   "rated_kg": null,
+   "model_kg": 6.6,
+   "gap_estimated": false,
+   "widest": 0.071,
+   "tightest": 0.0
+  }
+ ],
+ "jobs": [
+  {
+   "title": "Lemon into a bowl",
+   "from": "lemon_into_bowl_1cycle/card.json",
+   "kind": "pick_place",
+   "width_cm": 6.0,
+   "kg": 0.1,
+   "hands": 1,
+   "move_m": 0.0,
+   "handles": "none",
+   "container_cm": 22.0,
+   "python": {
+    "ur5e": null,
+    "fr3": null,
+    "panda": null,
+    "xarm7": null,
+    "lite6": "too_big",
+    "so101": null,
+    "g1": null,
+    "tienkung3": null,
+    "oli": null
+   }
+  },
+  {
+   "title": "Cookie onto a plate",
+   "from": "cookie_into_plate/card.json",
+   "kind": "pick_place",
+   "width_cm": 6.0,
+   "kg": 0.04,
+   "hands": 1,
+   "move_m": 0.0,
+   "handles": "none",
+   "container_cm": 22.0,
+   "python": {
+    "ur5e": null,
+    "fr3": null,
+    "panda": null,
+    "xarm7": null,
+    "lite6": "too_big",
+    "so101": null,
+    "g1": null,
+    "tienkung3": null,
+    "oli": null
+   }
+  },
+  {
+   "title": "Can into a bin",
+   "from": "cards/can_to_bin.json",
+   "kind": "pick_place",
+   "width_cm": 4.5,
+   "kg": 0.1,
+   "hands": 1,
+   "move_m": 0.0,
+   "handles": "none",
+   "container_cm": 22.6,
+   "python": {
+    "ur5e": null,
+    "fr3": null,
+    "panda": null,
+    "xarm7": null,
+    "lite6": "too_big",
+    "so101": null,
+    "g1": null,
+    "tienkung3": null,
+    "oli": null
+   }
+  },
+  {
+   "title": "Potato into a big basket",
+   "from": "cards/potato_to_basket.json",
+   "kind": "pick_place",
+   "width_cm": 5.0,
+   "kg": 0.06,
+   "hands": 1,
+   "move_m": 0.0,
+   "handles": "none",
+   "container_cm": 41.0,
+   "python": {
+    "ur5e": null,
+    "fr3": null,
+    "panda": null,
+    "xarm7": null,
+    "lite6": "too_big",
+    "so101": "no_room",
+    "g1": "no_room",
+    "tienkung3": "no_room",
+    "oli": null
+   }
+  },
+  {
+   "title": "Box with two hands",
+   "from": "box_two_hands/card.json",
+   "kind": "pick_place",
+   "width_cm": 14.6,
+   "kg": 2.0,
+   "hands": 2,
+   "move_m": 0.8,
+   "handles": "none",
+   "container_cm": 79.2,
+   "python": {
+    "ur5e": "too_big",
+    "fr3": "too_big",
+    "panda": "too_big",
+    "xarm7": "two_hands",
+    "lite6": "too_big",
+    "so101": "two_hands",
+    "g1": "two_hand_grip",
+    "tienkung3": "too_big",
+    "oli": "too_big"
+   }
+  },
+  {
+   "title": "Crate to the next table",
+   "from": "cards/carry_crate.json",
+   "kind": "carry",
+   "width_cm": 2.4,
+   "kg": 1.0,
+   "hands": 2,
+   "move_m": 1.7,
+   "handles": "side",
+   "container_cm": 0,
+   "python": {
+    "ur5e": "two_hands",
+    "fr3": "two_hands",
+    "panda": "two_hands",
+    "xarm7": "two_hands",
+    "lite6": "two_hands",
+    "so101": "two_hands",
+    "g1": null,
+    "tienkung3": "two_hands",
+    "oli": "two_hands"
+   }
+  },
+  {
+   "title": "Basket to the next table",
+   "from": "cards/carry_basket.json",
+   "kind": "carry",
+   "width_cm": 2.4,
+   "kg": 0.5,
+   "hands": 1,
+   "move_m": 1.7,
+   "handles": "top",
+   "container_cm": 0,
+   "python": {
+    "ur5e": "must_walk",
+    "fr3": "must_walk",
+    "panda": "must_walk",
+    "xarm7": "must_walk",
+    "lite6": "must_walk",
+    "so101": "must_walk",
+    "g1": null,
+    "tienkung3": null,
+    "oli": null
+   }
+  }
+ ],
+ "table": {
+  "centre": [
+   0.35,
+   0.0
+  ],
+  "half": [
+   0.55,
+   0.6
+  ]
+ }
+}

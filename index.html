@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Translator: film a job, see which robots can do it</title>
+<meta name="description" content="Meta AI turns a short video into a robot skill. Each robot checks it against its own body, then tries it in simulation.">
+<link rel="preload" href="fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-robot="ur5e">
+
+<header class="hero">
+  <nav class="top">
+    <a class="brand" href="#top">Translator</a>
+    <span class="top-links"><a class="ghost-link" href="#about">How it works</a> <a class="ghost-link" href="#check">Check a job</a> <a class="ghost-link" href="https://github.com/thenguyentrong/skill-translator">Code on GitHub</a></span>
+  </nav>
+  <div class="hero-copy" id="top">
+    <h1>Film a job. See which robots can do it.</h1>
+    <p>Upload a short video. Meta AI reads it, nine robots answer, and up to three try it in simulation.</p>
+    <label class="hero-drop">
+      <input id="hero-file" class="sr" type="file" accept="video/*">
+      <strong>Upload a video</strong>
+      <span id="hero-hint">or drop it anywhere on this page</span>
+    </label>
+  </div>
+  <div id="stage-wrap" class="loading">
+    <canvas id="stage" aria-label="A robot arm picks a yellow cube from a table and puts it in a white bowl. Drag the cube to disturb it."></canvas>
+    <div class="load" aria-hidden="true">Loading the physics engine</div>
+  </div>
+  <section class="hud" aria-label="Live robot state">
+    <ol id="steps" class="steps"></ol>
+    <p id="note" class="note" aria-live="polite">Drag the cube anywhere. The robot keeps going.</p>
+    <div class="metrics">
+      <div><span id="m-dist">0.0</span><small>cm, hand to cube</small></div>
+      <div><span id="m-grip">0</span><small>% grip closed</small></div>
+      <div><span id="m-speed">0.00</span><small>m/s hand target</small></div>
+      <div><span id="m-tries">0</span><small>grasp tries</small></div>
+      <div><span id="m-rec">0</span><small>recoveries</small></div>
+      <div><span id="m-done">0</span><small>jobs done</small></div>
+    </div>
+    <div class="actions">
+      <button id="knock" class="primary">Knock it out</button>
+      <button id="layout" class="plain">New layout</button>
+      <span class="seg robots" role="group" aria-label="Robot">
+        <button data-load="ur5e" aria-pressed="true">UR5e</button>
+        <button data-load="panda" aria-pressed="false">Panda</button>
+        <button data-load="xarm7" aria-pressed="false">xArm7</button>
+      </span>
+    </div>
+    <p class="source">Same card, same control code on each arm. Runs in your browser with MuJoCo, in simulation. Here the cube position comes from the simulator, not cameras.</p>
+  </section>
+</header>
+
+<main id="content"></main>
+<script type="module" src="app.js"></script>
+<script type="module" src="page.js"></script>
+</body>
+</html>

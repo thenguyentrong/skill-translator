@@ -1,0 +1,68 @@
+{
+ "ur5e": {
+  "undisturbed": [
+   3,
+   3
+  ],
+  "move while reaching": [
+   3,
+   3
+  ],
+  "take while descending": [
+   2,
+   3
+  ],
+  "knock while carrying": [
+   3,
+   3
+  ],
+  "take out of bowl": [
+   3,
+   3
+  ]
+ },
+ "xarm7": {
+  "undisturbed": [
+   10,
+   10
+  ],
+  "move while reaching": [
+   10,
+   10
+  ],
+  "take while descending": [
+   10,
+   10
+  ],
+  "knock while carrying": [
+   10,
+   10
+  ],
+  "take out of bowl": [
+   10,
+   10
+  ]
+ },
+ "panda": {
+  "undisturbed": [
+   10,
+   10
+  ],
+  "move while reaching": [
+   9,
+   10
+  ],
+  "take while descending": [
+   10,
+   10
+  ],
+  "knock while carrying": [
+   8,
+   10
+  ],
+  "take out of bowl": [
+   9,
+   10
+  ]
+ }
+}
