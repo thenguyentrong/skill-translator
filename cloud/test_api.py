@@ -1,5 +1,5 @@
 """The upload rules, without Modal: .venv/bin/python cloud/test_api.py"""
-import shutil
+import json
 import subprocess
 import sys
 import tempfile
@@ -14,14 +14,11 @@ from fastapi.testclient import TestClient
 from cloud import api as A
 from cloud import jobs as J
 
-CODE = "right-code"
-HEAD = {"X-Access-Code": CODE}
 
-
-def fresh(code=CODE):
-    tmp = Path(tempfile.mkdtemp())
+def fresh(tmp=None):
+    tmp = tmp or Path(tempfile.mkdtemp())
     store, started, tried = {}, [], []
-    client = TestClient(A.make_api(store, tmp, code, started.append, lambda *a: tried.append(a)), raise_server_exceptions=False)
+    client = TestClient(A.make_api(store, tmp, started.append, lambda *a: tried.append(a)), raise_server_exceptions=False)
     return client, store, tmp, started, tried
 
 
@@ -29,38 +26,56 @@ def ready(store, job, check):
     store[f"job:{job}"] = {"created": time.time(), "state": "ready", "stages": [], "check": check, "overlay": "tracks_overlay.mp4"}
 
 
-def test_code():
-    c, store, tmp, started, _ = fresh()
-    assert c.post("/jobs", content=b"x").status_code == 401
-    assert c.post("/jobs", content=b"x", headers={"X-Access-Code": "nope"}).status_code == 401
-    assert not started and not list(tmp.iterdir())
-    for _ in range(8):
-        c.post("/jobs", content=b"x", headers={"X-Access-Code": "nope"})
-    assert c.post("/jobs", content=b"x", headers=HEAD).status_code == 429, "too many wrong codes"
-    c2, *_ = fresh(code="")
-    assert c2.post("/jobs", content=b"x", headers={"X-Access-Code": ""}).status_code == 503, "no code set = closed"
+def spent(tmp, who="modal"):
+    return json.loads((tmp / "budget.json").read_text())[who]
 
 
 def test_upload():
     c, store, tmp, started, _ = fresh()
-    r = c.post("/jobs", content=b"video", headers=HEAD)
+    r = c.post("/jobs", content=b"video")
     assert r.status_code == 200
     job = r.json()["job"]
     assert started == [job] and (tmp / job / "upload").read_bytes() == b"video"
     assert c.get(f"/jobs/{job}").json()["state"] == "queued"
-    assert c.post("/jobs", content=b"", headers=HEAD).status_code == 400
+    assert c.post("/jobs", content=b"").status_code == 400
     A.MAX_BYTES, keep = 10, A.MAX_BYTES
-    assert c.post("/jobs", content=b"x" * 11, headers=HEAD).status_code == 413
+    assert c.post("/jobs", content=b"x" * 11).status_code == 413
     A.MAX_BYTES = keep
-    assert len(list(tmp.iterdir())) == 1, "a refused upload leaves nothing behind"
-    assert sum(v for k, v in store.items() if k.startswith("day:")) == 1, "only real jobs count"
+    assert len([p for p in tmp.iterdir() if p.is_dir()]) == 1, "a refused upload leaves nothing behind"
+    assert spent(tmp, "meta") == A.VIDEO_USD["meta"], "only real jobs count"
 
 
-def test_daily_limit():
+def test_budget_stops_for_good():
+    keep = dict(A.BUDGET_USD), A.VIDEOS_PER_HOUR
+    A.BUDGET_USD.update(meta=0.70, modal=0.30)
+    A.VIDEOS_PER_HOUR = 100
+    c, store, tmp, started, tried = fresh()
+    assert c.post("/jobs", content=b"x").status_code == 200
+    job = next(k[4:] for k in store)
+    ready(store, job, {"a": "can try", "b": "can try", "c": "can try"})
+    assert c.post(f"/jobs/{job}/run", json={"robots": ["a", "b"]}).status_code == 403, "Modal over budget"
+    assert not tried and not store.get(f"run:{job}:a")
+    assert c.post("/jobs", content=b"x").status_code == 200, "Meta reaches 0.70 exactly"
+    assert c.post(f"/jobs/{job}/run", json={"robots": ["a"]}).status_code == 200, "Modal reaches 0.30 exactly"
+    r = c.post("/jobs", content=b"x")
+    assert r.status_code == 403 and len(started) == 2
+    assert spent(tmp) == 0.30 and spent(tmp, "meta") == 0.70
+    assert c.post(f"/jobs/{job}/run", json={"robots": ["b"]}).status_code == 403
+    c2, *_, started2, _ = fresh(tmp)
+    assert c2.post("/jobs", content=b"x").status_code == 403, "a new container is still closed"
+    assert not started2
+    (tmp / "budget.json").write_text("broken")
+    assert c2.post("/jobs", content=b"x").status_code == 403, "an unreadable budget stays closed"
+    A.BUDGET_USD.update(keep[0])
+    A.VIDEOS_PER_HOUR = keep[1]
+
+
+def test_one_address_cannot_drain_it():
     c, *_ = fresh()
-    for _ in range(A.JOBS_PER_DAY):
-        assert c.post("/jobs", content=b"x", headers=HEAD).status_code == 200
-    assert c.post("/jobs", content=b"x", headers=HEAD).status_code == 429
+    for _ in range(A.VIDEOS_PER_HOUR):
+        assert c.post("/jobs", content=b"x").status_code == 200
+    assert c.post("/jobs", content=b"x").status_code == 429
+    assert c.post("/jobs", content=b"x", headers={"X-Forwarded-For": "1.2.3.4", "X-Real-IP": "1.2.3.4"}).status_code == 429, "faked address"
 
 
 def test_read():
@@ -81,16 +96,16 @@ def test_run():
     check = {r: "can try" for r in "abcd"} | {"e": "too big: no"}
     store[f"job:{job}"] = {"created": time.time(), "state": "reading", "check": check}
     url = f"/jobs/{job}/run"
-    assert c.post(url, json={"robots": ["a"]}, headers=HEAD).status_code == 409
+    assert c.post(url, json={"robots": ["a"]}).status_code == 409
     store[f"job:{job}"]["state"] = "ready"
-    assert c.post(url, json={"robots": ["a"]}).status_code == 401
-    assert c.post(url, json={"robots": []}, headers=HEAD).status_code == 400
-    assert c.post(url, json={"robots": ["e"]}, headers=HEAD).status_code == 400, "a robot that said no"
-    assert c.post(url, json={"robots": ["../x"]}, headers=HEAD).status_code == 400
-    assert c.post(url, json={"robots": ["a", "b", "c", "d"]}, headers=HEAD).status_code == 400, "over 3"
-    assert c.post(url, json={"robots": ["a", "b"]}, headers=HEAD).json() == {"started": ["a", "b"]}
-    assert c.post(url, json={"robots": ["a"]}, headers=HEAD).json() == {"started": []}, "not charged twice"
-    assert c.post(url, json={"robots": ["c", "d"]}, headers=HEAD).status_code == 400, "3 per video in total"
+    assert c.post(url, json={"robots": []}).status_code == 400
+    assert c.post(url, json={"robots": ["e"]}).status_code == 400, "a robot that said no"
+    assert c.post(url, json={"robots": ["../x"]}).status_code == 400
+    assert c.post(url, json={"robots": ["a", "b", "c", "d"]}).status_code == 400, "over 3"
+    assert c.post(url, json={"robots": ["a", "b"]}).json() == {"started": ["a", "b"]}
+    assert c.post(url, json={"robots": ["a"]}).json() == {"started": []}, "not charged twice"
+    assert spent(tmp) == 2 * A.RUN_USD["modal"]
+    assert c.post(url, json={"robots": ["c", "d"]}).status_code == 400, "3 per video in total"
     assert len(tried) == 2
     assert c.get(f"/jobs/{job}").json()["runs"]["a"]["state"] == "waiting"
 
@@ -115,9 +130,10 @@ def test_sweep():
     store = {f"job:{old}": {"created": 0}, f"job:{new}": {"created": 100000}, f"run:{old}:ur5e": {}, f"run:{new}:ur5e": {}}
     for j in (old, new, lost):
         (tmp / j).mkdir()
+    (tmp / "budget.json").write_text('{"meta": 1, "modal": 1}')
     A.sweep(store, tmp, now=100001)
     assert sorted(store) == [f"job:{new}", f"run:{new}:ur5e"]
-    assert [p.name for p in tmp.iterdir()] == [new]
+    assert sorted(p.name for p in tmp.iterdir()) == [new, "budget.json"], "the budget is never swept"
 
 
 def test_prepare():

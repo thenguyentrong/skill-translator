@@ -1,6 +1,6 @@
 """Translator in the cloud: `bash cloud/deploy.sh` (see cloud/README.md).
 
-web: the API, no MuJoCo, no Meta key. ingest: ffmpeg on the uploaded file, no secrets at all.
+web: the API and the budget, no MuJoCo, no Meta key. ingest: ffmpeg on the uploaded file, no secrets at all.
 learn: SAM + Muse + every robot's yes or no. robot_try: one robot, simulation only.
 """
 import traceback
@@ -105,11 +105,9 @@ def clean():
     files.commit()
 
 
-@app.function(image=web_image, volumes={"/jobs": files}, secrets=[modal.Secret.from_name("translator-web")],
-              max_containers=1, timeout=300)
+@app.function(image=web_image, volumes={"/jobs": files}, max_containers=1, timeout=300)  # one container: one budget lock
 @modal.concurrent(max_inputs=32)
 @modal.asgi_app(label="translator-api")
 def web():
-    import os
     from cloud.api import make_api
-    return make_api(store, JOBS, os.environ.get("ACCESS_CODE", ""), ingest.spawn, robot_try.spawn, files.commit, files.reload)
+    return make_api(store, JOBS, ingest.spawn, robot_try.spawn, files.commit, files.reload)

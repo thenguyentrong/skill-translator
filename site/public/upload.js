@@ -1,11 +1,11 @@
-// "Try your own video": talks to the Modal API in cloud/. No keys here: the visitor types the access code.
+// "Try your own video": talks to the Modal API in cloud/. No keys here.
 const API = "https://gokuvietsub1--translator-api.us-east.modal.run";
 const NAMES = { ur5e: "UR5e", panda: "Franka Panda", fr3: "Franka FR3", xarm7: "xArm7", lite6: "Lite6", so101: "SO-101", g1: "Unitree G1", tienkung3: "TienKung 3", oli: "LimX Oli" };
 const MAX_ROBOTS = 3;
 const WORDS = { queued: "Preparing the video", reading: "Meta AI is reading the video", checking: "Each robot is checking the job" };
 const SAYS = {
-  401: "That code is not right.", 413: "This video is over 60 MB. Try a shorter clip.",
-  429: "No more tries for now. Try again later.", 503: "Uploads are switched off right now.",
+  403: "This demo has used up its budget and is closed.", 413: "This video is over 60 MB. Try a shorter clip.",
+  429: "Five videos an hour at most. Try again later.",
 };
 
 const el = (tag, cls, text) => {
@@ -35,10 +35,6 @@ export function uploadPanel(cardView) {
 
   const grid = el("div", "check-grid");
   const form = el("form", "form");
-  const codeBox = el("label", "field");
-  const code = el("input");
-  Object.assign(code, { type: "password", autocomplete: "off", required: true, spellcheck: false });
-  codeBox.append(el("span", "", "Access code"), code);
   const fileBox = el("label", "field");
   const file = el("input");
   Object.assign(file, { type: "file", accept: "video/*", required: true });
@@ -47,7 +43,7 @@ export function uploadPanel(cardView) {
   send.type = "submit";
   const said = el("p", "said");
   said.setAttribute("aria-live", "polite");
-  form.append(codeBox, fileBox, send, said, el("p", "small", "Your video goes to Modal and to Meta's API to make the card, so keep faces and private things out of it. Our copy of the video is deleted when the card is done, and the results within 24 hours. It only ever runs in simulation."));
+  form.append(fileBox, send, said, el("p", "small", "Your video goes to Modal and to Meta's API to make the card, so keep faces and private things out of it. Our copy of the video is deleted when the card is done, and the results within 24 hours. It only runs in simulation. This demo closes for good when its budget is used up."));
 
   const out = el("div", "yours-out");
   out.append(el("p", "small", "The card, the robots' answers and their tries will show up here."));
@@ -111,7 +107,7 @@ export function uploadPanel(cardView) {
         go.disabled = true;
         said.textContent = "Starting the robots";
         try {
-          await call(`/jobs/${job}/run`, { method: "POST", headers: { "X-Access-Code": code.value, "Content-Type": "application/json" }, body: JSON.stringify({ robots: names }) });
+          await call(`/jobs/${job}/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ robots: names }) });
           said.textContent = "";
           built = "";
           poll();
@@ -195,7 +191,7 @@ export function uploadPanel(cardView) {
     out.replaceChildren();
     said.textContent = "Uploading";
     try {
-      ({ job } = await call("/jobs", { method: "POST", headers: { "X-Access-Code": code.value }, body: f }));
+      ({ job } = await call("/jobs", { method: "POST", body: f }));
       history.replaceState(null, "", `#job=${job}`);
       poll();
     } catch (err) {

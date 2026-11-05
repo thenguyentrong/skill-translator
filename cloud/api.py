@@ -1,9 +1,11 @@
 """The public API behind the site's upload panel: one video -> a skill card -> up to 3 robots try it.
 
+Open to anyone until the total budget is used up, then every new job is refused for good.
 Storage and the workers are passed in, so these rules can be tested without Modal (cloud/test_api.py).
-A job id is a random 128-bit value. Reading a job needs the id, starting anything also needs the access code.
+A job id is a random 128-bit value, so a job's results can only be read with its link.
 """
-import hmac
+import json
+import os
 import re
 import shutil
 import threading
@@ -11,18 +13,19 @@ import time
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+BUDGET_USD = {"meta": 140.0, "modal": 25.0}
+VIDEO_USD = {"meta": 0.35, "modal": 0.05}  # worst case: a 15 s clip through SAM and Muse, plus its two Modal steps
+RUN_USD = {"modal": 0.20}  # worst case: one robot on 8 CPUs until the 25 min timeout
 MAX_BYTES = 60 * 1024 * 1024
 MAX_ROBOTS = 3
 TRIALS = 5
-JOBS_PER_DAY = 15  # a 15 s clip costs at most about $0.35 in Meta API calls
-RUNS_PER_DAY = 60
-WRONG_CODES_PER_HOUR = 10
+VIDEOS_PER_HOUR = 5  # per address, so one person cannot use up the whole budget in minutes
 KEEP_SECONDS = 24 * 3600
 JOB_TIMEOUT = 15 * 60
 RUN_TIMEOUT = 30 * 60
@@ -30,6 +33,39 @@ ORIGINS = ["https://thenguyentrong.github.io", "http://127.0.0.1:8123"]
 FIELDS = ("state", "error", "stages", "card", "evidence", "check", "created")
 ID = re.compile(r"[0-9a-f]{32}")
 CLIP = re.compile(r"[a-z0-9_]+\.mp4")
+
+
+class Budget:
+    """Worst-case money promised so far per service, in a file on the volume so it lasts as long as the deployment.
+    Each promise is saved before its job starts. A file that cannot be read counts as used up."""
+
+    def __init__(self, path, commit):
+        self.path, self.commit, self.lock = Path(path), commit, threading.Lock()
+
+    def spent(self):
+        try:
+            saved = json.loads(self.path.read_text())
+            return {k: float(saved[k]) for k in BUDGET_USD}
+        except FileNotFoundError:
+            return dict.fromkeys(BUDGET_USD, 0.0)
+        except (ValueError, KeyError, TypeError):
+            return dict.fromkeys(BUDGET_USD, float("inf"))
+
+    def check(self, cost, n=1):
+        spent = self.spent()
+        if any(spent[k] + n * usd > BUDGET_USD[k] + 1e-9 for k, usd in cost.items()):
+            raise HTTPException(403, "this demo has used up its budget and is closed")
+
+    def take(self, cost, n=1):
+        with self.lock:
+            self.check(cost, n)
+            spent = self.spent()
+            for k, usd in cost.items():
+                spent[k] = round(spent[k] + n * usd, 4)
+            tmp = self.path.with_suffix(".tmp")
+            tmp.write_text(json.dumps({**spent, "updated": time.time()}))
+            os.replace(tmp, self.path)
+            self.commit()
 
 
 class Run(BaseModel):
@@ -51,47 +87,31 @@ def sweep(store, root, now=None):
     for key in list(store.keys()):
         if key.startswith("run:") and key.split(":")[1] not in live:
             store.pop(key)
-        elif key.startswith("day:") and key[4:14] < time.strftime("%Y-%m-%d", time.gmtime(now - 2 * 86400)):
-            store.pop(key)
     for folder in root.iterdir() if root.exists() else ():
         if folder.is_dir() and folder.name not in live and ID.fullmatch(folder.name):
             shutil.rmtree(folder, ignore_errors=True)
 
 
-def make_api(store, root, code, ingest, run_robot, commit=lambda: None, reload=lambda: None):
+def make_api(store, root, ingest, run_robot, commit=lambda: None, reload=lambda: None):
     app = FastAPI(title="Translator", docs_url=None, redoc_url=None, openapi_url=None)
-    app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST"],
-                       allow_headers=["X-Access-Code", "Content-Type"])
+    app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
     root = Path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    budget = Budget(root / "budget.json", commit)
     lock = threading.Lock()
-    wrong = {}
+    recent = {}
 
-    def guard(request, given):
-        if not code:
-            raise HTTPException(503, "uploads are switched off")
-        ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "?").split(",")[0].strip()
+    def address(request):
+        return request.client.host if request.client else "?"  # Modal sets this; forwarded headers can be faked
+
+    def videos_left(ip):
         now = time.time()
         with lock:
-            if len(wrong) > 10000:
-                wrong.clear()
-            recent = wrong[ip] = [t for t in wrong.get(ip, []) if now - t < 3600]
-            if len(recent) >= WRONG_CODES_PER_HOUR:
-                raise HTTPException(429, "too many wrong codes, try again in an hour")
-            if not hmac.compare_digest(given.encode(), code.encode()):
-                recent.append(now)
-                raise HTTPException(401, "wrong access code")
-
-    def day_key(kind):
-        return f"day:{time.strftime('%Y-%m-%d', time.gmtime())}:{kind}"
-
-    def room(kind, limit, n=1):
-        if store.get(day_key(kind), 0) + n > limit:
-            raise HTTPException(429, f"today's limit of {limit} {kind} is used up, try again tomorrow")
-
-    def take(kind, limit, n=1):
-        with lock:
-            room(kind, limit, n)
-            store[day_key(kind)] = store.get(day_key(kind), 0) + n
+            if len(recent) > 10000:
+                recent.clear()
+            times = recent[ip] = [t for t in recent.get(ip, []) if now - t < 3600]
+            if len(times) >= VIDEOS_PER_HOUR:
+                raise HTTPException(429, f"{VIDEOS_PER_HOUR} videos an hour at most, try again later")
 
     def load(job):
         state = store.get(f"job:{job}") if ID.fullmatch(job) else None
@@ -124,16 +144,20 @@ def make_api(store, root, code, ingest, run_robot, commit=lambda: None, reload=l
         out["overlay_url"] = f"/jobs/{job}/files/{state['overlay']}" if state.get("overlay") else None
         return out
 
-    def save_upload(job):
-        take("jobs", JOBS_PER_DAY)
+    def save_upload(job, ip):
+        videos_left(ip)
+        budget.take(VIDEO_USD)
+        with lock:
+            recent[ip].append(time.time())
         store[f"job:{job}"] = {"created": time.time(), "state": "queued", "stages": []}
         commit()
         ingest(job)
 
     @app.post("/jobs")
-    async def create(request: Request, x_access_code: str = Header("")):
-        await run_in_threadpool(guard, request, x_access_code)
-        await run_in_threadpool(room, "jobs", JOBS_PER_DAY)
+    async def create(request: Request):
+        ip = address(request)
+        await run_in_threadpool(videos_left, ip)
+        await run_in_threadpool(budget.check, VIDEO_USD)
         job = uuid.uuid4().hex
         folder = root / job
         folder.mkdir(parents=True)
@@ -147,7 +171,7 @@ def make_api(store, root, code, ingest, run_robot, commit=lambda: None, reload=l
                     f.write(chunk)
             if not size:
                 raise HTTPException(400, "no video in the request")
-            await run_in_threadpool(save_upload, job)
+            await run_in_threadpool(save_upload, job, ip)
         except BaseException:
             shutil.rmtree(folder, ignore_errors=True)
             raise
@@ -158,8 +182,7 @@ def make_api(store, root, code, ingest, run_robot, commit=lambda: None, reload=l
         return view(job, load(job))
 
     @app.post("/jobs/{job}/run")
-    def run(job: str, req: Run, request: Request, x_access_code: str = Header("")):
-        guard(request, x_access_code)
+    def run(job: str, req: Run):
         state = load(job)
         if state["state"] != "ready":
             raise HTTPException(409, "the robots have not answered yet")
@@ -173,7 +196,9 @@ def make_api(store, root, code, ingest, run_robot, commit=lambda: None, reload=l
         fresh = [r for r in picked if r not in started]
         if len(started) + len(fresh) > MAX_ROBOTS:
             raise HTTPException(400, f"at most {MAX_ROBOTS} robots per video")
-        take("robot runs", RUNS_PER_DAY, len(fresh))
+        if not fresh:
+            return {"started": []}
+        budget.take(RUN_USD, len(fresh))
         for robot in fresh:
             store[f"run:{job}:{robot}"] = {"state": "waiting", "queued": time.time(), "trials": TRIALS}
             run_robot(job, robot, TRIALS)

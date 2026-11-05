@@ -1,5 +1,6 @@
 """The worker steps as plain functions: modal_app.py runs them in the cloud."""
 import json
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -58,6 +59,7 @@ def make_card(clip, out, save):
 def try_one(card, robot, out, trials):
     """Returns the score ('4/5') or why the robot could not start, and the name of the first try's clip."""
     from run_job import try_robot
+    card = {**card, "name": re.sub(r"[^a-z0-9_]+", "_", card["name"].lower())[:60] or "job"}  # used in a file name
     result = try_robot(robot, card, out, trials)
     clip = next(iter(sorted(out.glob(f"{robot}_trial0_*.mp4"))), None)
     return {"result": result, "clip": clip.name if clip else None}
